@@ -5,19 +5,32 @@ plugins {
 
 android {
     compileSdk 33
+    flavorDimensions "abi"
 
     defaultConfig {
         minSdk 21
-        targetSdk 29
-        ndk { abiFilters "armeabi-v7a" }
+        targetSdk 28
         python {
-            buildPython "C:/Users/FongMi.DIREK/Anaconda3/envs/py38/python.exe"
+            buildPython "C:/Python311/python.exe"
             pip {
                 install "lxml"
                 install 'pycryptodome'
                 install 'beautifulsoup4'
                 install "requests==2.27.1"
             }
+        }
+    }
+
+    productFlavors {
+        armeabi_v7a {
+            dimension "abi"
+            //noinspection ChromeOsAbiSupport
+            ndk { abiFilters "armeabi-v7a" }
+        }
+        arm64_v8a {
+            dimension "abi"
+            //noinspection ChromeOsAbiSupport
+            ndk { abiFilters "arm64-v8a" }
         }
     }
 
@@ -31,5 +44,5 @@ android {
 dependencies {
     implementation project(':catvod')
     implementation 'androidx.annotation:annotation:1.5.0'
-    implementation 'com.google.code.gson:gson:2.10.1'
+    api 'com.google.code.gson:gson:' + gsonVersion
 }
