@@ -1,75 +1,116 @@
 package com.tvbus.engine;
 
 import android.content.Context;
-import android.text.TextUtils;
 
 public class TVCore {
 
-    private final long handle;
+    private long handle;
 
     public TVCore() {
-        PmsHook.inject();
-        System.loadLibrary("tvcore");
-        handle = initialise();
+        try {
+            PmsHook.inject();
+            System.loadLibrary("tvcore");
+            handle = initialise();
+        } catch (Throwable ignored) {
+        }
     }
 
     public TVCore listener(Listener listener) {
-        setListener(handle, listener);
-        return this;
+        try {
+            setListener(handle, listener);
+            return this;
+        } catch (Throwable ignored) {
+            return this;
+        }
     }
 
     public TVCore play(int port) {
-        setPlayPort(handle, port);
-        return this;
+        try {
+            setPlayPort(handle, port);
+            return this;
+        } catch (Throwable ignored) {
+            return this;
+        }
     }
 
     public TVCore serv(int port) {
-        setServPort(handle, port);
-        return this;
+        try {
+            setServPort(handle, port);
+            return this;
+        } catch (Throwable ignored) {
+            return this;
+        }
     }
 
     public TVCore mode(int mode) {
-        setRunningMode(handle, mode);
-        return this;
+        try {
+            setRunningMode(handle, mode);
+            return this;
+        } catch (Throwable ignored) {
+            return this;
+        }
     }
 
     public TVCore auth(String str) {
-        if (!TextUtils.isEmpty(str)) setAuthUrl(handle, str);
-        return this;
+        try {
+            if (str.length() > 0) setAuthUrl(handle, str);
+            return this;
+        } catch (Throwable ignored) {
+            return this;
+        }
     }
 
     public TVCore broker(String str) {
-        if (!TextUtils.isEmpty(str)) setMKBroker(handle, str);
-        return this;
+        try {
+            if (str.length() > 0) setMKBroker(handle, str);
+            return this;
+        } catch (Throwable ignored) {
+            return this;
+        }
     }
 
     public TVCore name(String str) {
-        if (!TextUtils.isEmpty(str)) setUsername(handle, str);
-        return this;
+        try {
+            if (str.length() > 0) setUsername(handle, str);
+            return this;
+        } catch (Throwable ignored) {
+            return this;
+        }
     }
 
     public TVCore pass(String str) {
-        if (!TextUtils.isEmpty(str)) setPassword(handle, str);
-        return this;
+        try {
+            if (str.length() > 0) setPassword(handle, str);
+            return this;
+        } catch (Throwable ignored) {
+            return this;
+        }
     }
 
     public void init(Context context) {
-        new Thread(() -> {
+        new Thread(() -> start(context)).start();
+    }
+
+    private void start(Context context) {
+        try {
             init(handle, context);
             run(handle);
-        }).start();
+        } catch (Throwable ignored) {
+        }
     }
 
     public void start(String url) {
-        start(handle, url);
+        try {
+            start(handle, url);
+        } catch (Throwable ignored) {
+        }
     }
 
     public void stop() {
-        stop(handle);
-    }
-
-    public void quit() {
-        quit(handle);
+        try {
+            stop(handle);
+        } catch (Throwable ignored) {
+        }
     }
 
     private native long initialise();
@@ -81,8 +122,6 @@ public class TVCore {
     private native void start(long handle, String url);
 
     private native void stop(long handle);
-
-    private native void quit(long handle);
 
     private native void setServPort(long handle, int iPort);
 
