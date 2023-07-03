@@ -21,17 +21,17 @@ import java.util.concurrent.Future;
 public class Spider extends com.github.catvod.crawler.Spider {
 
     private ExecutorService executor;
-    private String key;
-    private String api;
     private QuickJSContext ctx;
     private JSObject jsObject;
+    private String key;
+    private String api;
 
     public Spider() {
     }
 
     public Spider(String api) {
-        this.executor = Executors.newSingleThreadExecutor();
         this.key = "__" + UUID.randomUUID().toString().replace("-", "") + "__";
+        this.executor = Executors.newSingleThreadExecutor();
         this.api = api;
     }
 
@@ -101,8 +101,8 @@ public class Spider extends com.github.catvod.crawler.Spider {
 
     private void createCtx() {
         ctx = QuickJSContext.create();
-        Global.create(ctx).setProperty();
         QuickJSLoader.initConsoleLog(ctx);
+        Global.create(ctx, executor).setProperty();
         ctx.getGlobalObject().setProperty("local", Local.class);
     }
 

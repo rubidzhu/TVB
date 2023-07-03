@@ -7,3 +7,9 @@ plugins {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+
+project.ext {
+    gsonVersion = '2.10.1'
+    jsoupVersion = '1.15.3'
+    okhttpVersion = '4.11.0'
+}

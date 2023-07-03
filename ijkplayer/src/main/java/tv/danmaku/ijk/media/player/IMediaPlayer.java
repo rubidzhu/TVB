@@ -17,19 +17,18 @@
 
 package tv.danmaku.ijk.media.player;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.net.Uri;
-import android.os.Build;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
-import java.io.FileDescriptor;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 import tv.danmaku.ijk.media.player.misc.IMediaDataSource;
+import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 
 public interface IMediaPlayer {
     /*
@@ -50,12 +49,12 @@ public interface IMediaPlayer {
     int MEDIA_INFO_SUBTITLE_TIMED_OUT = 902;
 
     int MEDIA_INFO_VIDEO_ROTATION_CHANGED = 10001;
-    int MEDIA_INFO_AUDIO_RENDERING_START  = 10002;
-    int MEDIA_INFO_AUDIO_DECODED_START    = 10003;
-    int MEDIA_INFO_VIDEO_DECODED_START    = 10004;
-    int MEDIA_INFO_OPEN_INPUT             = 10005;
-    int MEDIA_INFO_FIND_STREAM_INFO       = 10006;
-    int MEDIA_INFO_COMPONENT_OPEN         = 10007;
+    int MEDIA_INFO_AUDIO_RENDERING_START = 10002;
+    int MEDIA_INFO_AUDIO_DECODED_START = 10003;
+    int MEDIA_INFO_VIDEO_DECODED_START = 10004;
+    int MEDIA_INFO_OPEN_INPUT = 10005;
+    int MEDIA_INFO_FIND_STREAM_INFO = 10006;
+    int MEDIA_INFO_COMPONENT_OPEN = 10007;
     int MEDIA_INFO_VIDEO_SEEK_RENDERING_START = 10008;
     int MEDIA_INFO_AUDIO_SEEK_RENDERING_START = 10009;
     int MEDIA_INFO_MEDIA_ACCURATE_SEEK_COMPLETE = 10100;
@@ -70,20 +69,9 @@ public interface IMediaPlayer {
 
     void setDisplay(SurfaceHolder sh);
 
-    void setDataSource(Context context, Uri uri)
-            throws IOException, IllegalArgumentException, SecurityException, IllegalStateException;
+    void setDataSource(Context context, Uri uri, Map<String, String> headers) throws IOException, IllegalArgumentException, SecurityException, IllegalStateException;
 
-    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
-    void setDataSource(Context context, Uri uri, Map<String, String> headers)
-            throws IOException, IllegalArgumentException, SecurityException, IllegalStateException;
-
-    void setDataSource(FileDescriptor fd)
-            throws IOException, IllegalArgumentException, IllegalStateException;
-
-    void setDataSource(String path)
-            throws IOException, IllegalArgumentException, SecurityException, IllegalStateException;
-
-    String getDataSource();
+    void setDataSource(String path) throws IOException, IllegalArgumentException, SecurityException, IllegalStateException;
 
     void prepareAsync() throws IllegalStateException;
 
@@ -115,9 +103,21 @@ public interface IMediaPlayer {
 
     void setVolume(float leftVolume, float rightVolume);
 
+    void setSpeed(float speed);
+
+    float getSpeed();
+
     int getAudioSessionId();
 
-    MediaInfo getMediaInfo();
+    int getSelectedTrack(int type);
+
+    void selectTrack(int track);
+
+    void deselectTrack(int track);
+
+    void setOption(int category, String name, String value);
+
+    void setOption(int category, String name, long value);
 
     @SuppressWarnings("EmptyMethod")
     @Deprecated
@@ -126,62 +126,20 @@ public interface IMediaPlayer {
     @Deprecated
     boolean isPlayable();
 
-    void setOnPreparedListener(OnPreparedListener listener);
-
-    void setOnCompletionListener(OnCompletionListener listener);
-
-    void setOnBufferingUpdateListener(
-            OnBufferingUpdateListener listener);
-
-    void setOnSeekCompleteListener(
-            OnSeekCompleteListener listener);
-
-    void setOnVideoSizeChangedListener(
-            OnVideoSizeChangedListener listener);
-
-    void setOnErrorListener(OnErrorListener listener);
-
-    void setOnInfoListener(OnInfoListener listener);
-
-    void setOnTimedTextListener(OnTimedTextListener listener);
+    IMediaPlayer setListener(Listener listener);
 
     /*--------------------
      * Listeners
      */
-    interface OnPreparedListener {
+    interface Listener {
         void onPrepared(IMediaPlayer mp);
-    }
-
-    interface OnCompletionListener {
         void onCompletion(IMediaPlayer mp);
-    }
-
-    interface OnBufferingUpdateListener {
-
-        void onBufferingUpdate(IMediaPlayer mp, long position);
-
-        void onBufferingUpdate(IMediaPlayer mp, int percent);
-    }
-
-    interface OnSeekCompleteListener {
-        void onSeekComplete(IMediaPlayer mp);
-    }
-
-    interface OnVideoSizeChangedListener {
-        void onVideoSizeChanged(IMediaPlayer mp, int width, int height,
-                                int sar_num, int sar_den);
-    }
-
-    interface OnErrorListener {
+        void onInfo(IMediaPlayer mp, int what, int extra);
         boolean onError(IMediaPlayer mp, int what, int extra);
-    }
-
-    interface OnInfoListener {
-        boolean onInfo(IMediaPlayer mp, int what, int extra);
-    }
-
-    interface OnTimedTextListener {
-        void onTimedText(IMediaPlayer mp, IjkTimedText text);
+        default void onTimedText(IMediaPlayer mp, IjkTimedText text) {}
+        default void onBufferingUpdate(IMediaPlayer mp, int percent) {}
+        default void onBufferingUpdate(IMediaPlayer mp, long position) {}
+        default void onVideoSizeChanged(IMediaPlayer mp, int width, int height, int sar_num, int sar_den) {}
     }
 
     /*--------------------
@@ -202,6 +160,11 @@ public interface IMediaPlayer {
     void setLooping(boolean looping);
 
     boolean isLooping();
+
+    /*--------------------
+     * AndroidMediaPlayer: JELLY_BEAN
+     */
+    List<ITrackInfo> getTrackInfo();
 
     /*--------------------
      * AndroidMediaPlayer: ICE_CREAM_SANDWICH:

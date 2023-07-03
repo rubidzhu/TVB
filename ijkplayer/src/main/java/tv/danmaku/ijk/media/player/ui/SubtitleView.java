@@ -13,34 +13,24 @@ import androidx.annotation.Nullable;
 
 public class SubtitleView extends TextView {
 
+    private final float strokeWidth;
     private boolean isDrawing;
-    private float strokeWidth;
 
     public SubtitleView(Context context) {
-        super(context);
-        init();
+        this(context, null);
     }
 
     public SubtitleView(Context context, @Nullable AttributeSet attrs) {
-        super(context, attrs);
-        init();
+        this(context, attrs, 0);
     }
 
     public SubtitleView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        init();
-    }
-
-    private void init() {
-        strokeWidth = Utils.dp2px(getContext(), 0.6f);
+        strokeWidth = Utils.dp2px(getContext(), 0.8f);
     }
 
     public void onSubtitleChanged(String text) {
-        if (TextUtils.isEmpty(text)) {
-            setText("");
-        } else {
-            setText(Html.fromHtml(text.replaceAll("\\{\\\\.*?\\}", "")));
-        }
+        setText(TextUtils.isEmpty(text) ? "" : Html.fromHtml(text.replaceAll("\\{\\\\.*?\\}", "")));
     }
 
     @Override

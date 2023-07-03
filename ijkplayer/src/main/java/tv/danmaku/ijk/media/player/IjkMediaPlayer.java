@@ -20,34 +20,29 @@ package tv.danmaku.ijk.media.player;
 
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
-import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.os.ParcelFileDescriptor;
 import android.os.PowerManager;
-import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
-import java.io.FileDescriptor;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.net.URLEncoder;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -61,6 +56,7 @@ import tv.danmaku.ijk.media.player.misc.IMediaDataSource;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 import tv.danmaku.ijk.media.player.misc.IjkTrackInfo;
 import tv.danmaku.ijk.media.player.pragma.DebugLog;
+import tv.danmaku.ijk.media.player.ui.Utils;
 
 /**
  * @author bbcallen
@@ -164,15 +160,11 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private PowerManager.WakeLock mWakeLock = null;
     private boolean mScreenOnWhilePlaying;
     private boolean mStayAwake;
-    private boolean dotOpen;
 
     private int mVideoWidth;
     private int mVideoHeight;
     private int mVideoSarNum;
     private int mVideoSarDen;
-    private int dotPort;
-
-    private String mDataSource;
 
     /**
      * Default library loader
@@ -305,18 +297,6 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
      *
      * @param context the Context to use when resolving the Uri
      * @param uri     the Content URI of the data you want to play
-     * @throws IllegalStateException if it is called in an invalid state
-     */
-    @Override
-    public void setDataSource(Context context, Uri uri) throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
-        setDataSource(context, uri, null);
-    }
-
-    /**
-     * Sets the data source as a content Uri.
-     *
-     * @param context the Context to use when resolving the Uri
-     * @param uri     the Content URI of the data you want to play
      * @param headers the headers to be sent together with the request for the data
      *                Note that the cross domain redirection is allowed by default, but that can be
      *                changed with key/value pairs through the headers parameter with
@@ -329,39 +309,9 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         String scheme = uri.getScheme();
         if (ContentResolver.SCHEME_FILE.equals(scheme)) {
             setDataSource(uri.getPath());
-            return;
-        } else if (ContentResolver.SCHEME_CONTENT.equals(scheme) && Settings.AUTHORITY.equals(uri.getAuthority())) {
-            // Redirect ringtones to go directly to underlying provider
-            uri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.getDefaultType(uri));
-            if (uri == null) {
-                throw new FileNotFoundException("Failed to resolve default ringtone");
-            }
+        } else {
+            setDataSource(encodeSpaceChinese(uri.toString()), headers);
         }
-
-        AssetFileDescriptor fd = null;
-        try {
-            ContentResolver resolver = context.getContentResolver();
-            fd = resolver.openAssetFileDescriptor(uri, "r");
-            if (fd == null) {
-                return;
-            }
-            // Note: using getDeclaredLength so that our behavior is the same
-            // as previous versions when the content provider is returning
-            // a full file.
-            if (fd.getDeclaredLength() < 0) {
-                setDataSource(fd.getFileDescriptor());
-            } else {
-                setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getDeclaredLength());
-            }
-            return;
-        } catch (SecurityException | IOException ignored) {
-        } finally {
-            if (fd != null) {
-                fd.close();
-            }
-        }
-
-        setDataSource(encodeSpaceChinese(uri.toString()), headers);
     }
 
     private String encodeSpaceChinese(String str) throws UnsupportedEncodingException {
@@ -390,7 +340,6 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
      */
     @Override
     public void setDataSource(String path) throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
-        mDataSource = path;
         _setDataSource(path, null, null);
     }
 
@@ -402,55 +351,21 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
      * @throws IllegalStateException if it is called in an invalid state
      */
     public void setDataSource(String path, Map<String, String> headers) throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
-        if (headers != null && !headers.isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            for (Map.Entry<String, String> entry : headers.entrySet()) {
-                sb.append(entry.getKey());
-                sb.append(":");
-                String value = entry.getValue();
-                if (!TextUtils.isEmpty(value)) sb.append(entry.getValue());
-                sb.append("\r\n");
-                setOption(OPT_CATEGORY_FORMAT, "headers", sb.toString());
-            }
+        for (String key : Arrays.asList(Utils.USER_AGENT, Utils.USER_AGENT.toLowerCase())) {
+            if (!headers.containsKey(key)) continue;
+            setOption(OPT_CATEGORY_FORMAT, "user_agent", headers.get(key));
+            headers.remove(key);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            sb.append(entry.getKey());
+            sb.append(":");
+            String value = entry.getValue();
+            if (!TextUtils.isEmpty(value)) sb.append(entry.getValue());
+            sb.append("\r\n");
+            setOption(OPT_CATEGORY_FORMAT, "headers", sb.toString());
         }
         setDataSource(path);
-    }
-
-    /**
-     * Sets the data source (FileDescriptor) to use. It is the caller's responsibility
-     * to close the file descriptor. It is safe to do so as soon as this call returns.
-     *
-     * @param fd the FileDescriptor for the file you want to play
-     * @throws IllegalStateException if it is called in an invalid state
-     */
-    @Override
-    public void setDataSource(FileDescriptor fd) throws IOException, IllegalArgumentException, IllegalStateException {
-        try (ParcelFileDescriptor pfd = ParcelFileDescriptor.dup(fd)) {
-            _setDataSourceFd(pfd.getFd());
-        }
-    }
-
-    /**
-     * Sets the data source (FileDescriptor) to use.  The FileDescriptor must be
-     * seekable (N.B. a LocalSocket is not seekable). It is the caller's responsibility
-     * to close the file descriptor. It is safe to do so as soon as this call returns.
-     *
-     * @param fd     the FileDescriptor for the file you want to play
-     * @param offset the offset into the file where the data to be played starts, in bytes
-     * @param length the length in bytes of the data to be played
-     * @throws IllegalStateException if it is called in an invalid state
-     */
-    private void setDataSource(FileDescriptor fd, long offset, long length) throws IOException, IllegalArgumentException, IllegalStateException {
-        // FIXME: handle offset, length
-        setDataSource(fd);
-    }
-
-    public void setDataSource(IMediaDataSource mediaDataSource) throws IllegalArgumentException, SecurityException, IllegalStateException {
-        _setDataSource(mediaDataSource);
-    }
-
-    public void setAndroidIOCallback(IAndroidIO androidIO) throws IllegalArgumentException, SecurityException, IllegalStateException {
-        _setAndroidIOCallback(androidIO);
     }
 
     private native void _setDataSource(String path, String[] keys, String[] values) throws IOException, IllegalArgumentException, SecurityException, IllegalStateException;
@@ -460,11 +375,6 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     private native void _setDataSource(IMediaDataSource mediaDataSource) throws IllegalArgumentException, SecurityException, IllegalStateException;
 
     private native void _setAndroidIOCallback(IAndroidIO androidIO) throws IllegalArgumentException, SecurityException, IllegalStateException;
-
-    @Override
-    public String getDataSource() {
-        return mDataSource;
-    }
 
     @Override
     public void prepareAsync() throws IllegalStateException {
@@ -539,20 +449,12 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         }
     }
 
-    private List<IjkMediaMeta.IjkStreamMeta> getStreams() {
-        Bundle bundle = getMediaMeta();
-        if (bundle == null) return Collections.emptyList();
-        IjkMediaMeta mediaMeta = IjkMediaMeta.parse(bundle);
-        if (mediaMeta == null) return Collections.emptyList();
-        return mediaMeta.mStreams;
+    @Override
+    public List<ITrackInfo> getTrackInfo() {
+        return IjkTrackInfo.fromMediaMeta(getMediaMeta());
     }
 
-    public List<IjkTrackInfo> getTrackInfo() {
-        List<IjkTrackInfo> trackInfos = new ArrayList<>();
-        for (IjkMediaMeta.IjkStreamMeta streamMeta : getStreams()) trackInfos.add(new IjkTrackInfo(streamMeta));
-        return trackInfos;
-    }
-
+    @Override
     public int getSelectedTrack(int trackType) {
         switch (trackType) {
             case ITrackInfo.MEDIA_TRACK_TYPE_VIDEO:
@@ -566,6 +468,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         }
     }
 
+    @Override
     public void selectTrack(int track) {
         try {
             _setStreamSelected(track, true);
@@ -573,6 +476,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         }
     }
 
+    @Override
     public void deselectTrack(int track) {
         try {
             _setStreamSelected(track, false);
@@ -682,12 +586,14 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
     private native int _getLoopCount();
 
+    @Override
     public void setSpeed(float speed) {
         _setPropertyFloat(FFP_PROP_FLOAT_PLAYBACK_RATE, speed);
     }
 
+    @Override
     public float getSpeed() {
-        return _getPropertyFloat(FFP_PROP_FLOAT_PLAYBACK_RATE, 0);
+        return _getPropertyFloat(FFP_PROP_FLOAT_PLAYBACK_RATE, 1.0f);
     }
 
     public int getVideoDecoder() {
@@ -793,40 +699,6 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public native int getAudioSessionId();
 
     @Override
-    public MediaInfo getMediaInfo() {
-        MediaInfo mediaInfo = new MediaInfo();
-        mediaInfo.mMediaPlayerName = "ijkplayer";
-        String videoCodecInfo = _getVideoCodecInfo();
-        if (!TextUtils.isEmpty(videoCodecInfo)) {
-            String[] nodes = videoCodecInfo.split(",");
-            if (nodes.length >= 2) {
-                mediaInfo.mVideoDecoder = nodes[0];
-                mediaInfo.mVideoDecoderImpl = nodes[1];
-            } else if (nodes.length >= 1) {
-                mediaInfo.mVideoDecoder = nodes[0];
-                mediaInfo.mVideoDecoderImpl = "";
-            }
-        }
-        String audioCodecInfo = _getAudioCodecInfo();
-        if (!TextUtils.isEmpty(audioCodecInfo)) {
-            String[] nodes = audioCodecInfo.split(",");
-            if (nodes.length >= 2) {
-                mediaInfo.mAudioDecoder = nodes[0];
-                mediaInfo.mAudioDecoderImpl = nodes[1];
-            } else if (nodes.length >= 1) {
-                mediaInfo.mAudioDecoder = nodes[0];
-                mediaInfo.mAudioDecoderImpl = "";
-            }
-        }
-        try {
-            mediaInfo.mMeta = IjkMediaMeta.parse(_getMediaMeta());
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-        return mediaInfo;
-    }
-
-    @Override
     public void setLogEnabled(boolean enable) {
         // do nothing
     }
@@ -921,22 +793,15 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                     return;
                 case MEDIA_BUFFERING_UPDATE:
                     long bufferPosition = msg.arg1;
-                    if (bufferPosition < 0) {
-                        bufferPosition = 0;
-                    }
+                    if (bufferPosition < 0) bufferPosition = 0;
                     long percent = 0;
                     long duration = player.getDuration();
-                    if (duration > 0) {
-                        percent = bufferPosition * 100 / duration;
-                    }
-                    if (percent >= 100) {
-                        percent = 100;
-                    }
+                    if (duration > 0) percent = bufferPosition * 100 / duration;
+                    if (percent >= 100) percent = 100;
                     player.notifyOnBufferingUpdate(bufferPosition);
                     player.notifyOnBufferingUpdate((int) percent);
                     return;
                 case MEDIA_SEEK_COMPLETE:
-                    player.notifyOnSeekComplete();
                     return;
                 case MEDIA_SET_VIDEO_SIZE:
                     player.mVideoWidth = msg.arg1;
@@ -958,7 +823,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                     if (msg.obj == null) {
                         player.notifyOnTimedText(null);
                     } else {
-                        IjkTimedText text = new IjkTimedText((String) msg.obj);
+                        IjkTimedText text = new IjkTimedText(new Rect(0, 0, 1, 1), (String) msg.obj);
                         player.notifyOnTimedText(text);
                     }
                     return;
@@ -1156,6 +1021,8 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static native void native_profileEnd();
 
     public static native void native_setLogLevel(int level);
+
+    public static native void native_setReqLevel(int level);
 
     public static native void native_setDot(int port);
 }
