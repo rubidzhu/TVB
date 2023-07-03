@@ -11,4 +11,4 @@
     android:singleLine="true"
     android:textColor="@color/text"
     android:textSize="14sp"
-    tools:text="20" />
+    tools:text="20， 选集" />

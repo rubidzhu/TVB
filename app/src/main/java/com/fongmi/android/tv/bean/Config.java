@@ -7,21 +7,41 @@ import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 import com.fongmi.android.tv.db.AppDatabase;
+import com.google.gson.Gson;
+import com.google.gson.annotations.SerializedName;
+import com.google.gson.reflect.TypeToken;
 
+import java.lang.reflect.Type;
+import java.util.Collections;
 import java.util.List;
 
 @Entity(indices = @Index(value = {"url", "type"}, unique = true))
 public class Config {
 
     @PrimaryKey(autoGenerate = true)
+    @SerializedName("id")
     private int id;
+    @SerializedName("type")
     private int type;
+    @SerializedName("time")
     private long time;
+    @SerializedName("url")
     private String url;
+    @SerializedName("json")
     private String json;
+    @SerializedName("name")
     private String name;
+    @SerializedName("home")
     private String home;
+    @SerializedName("parse")
     private String parse;
+
+    public static List<Config> arrayFrom(String str) {
+        Type listType = new TypeToken<List<Config>>() {
+        }.getType();
+        List<Config> items = new Gson().fromJson(str, listType);
+        return items == null ? Collections.emptyList() : items;
+    }
 
     public static Config create(int type) {
         return new Config().type(type);
@@ -129,6 +149,10 @@ public class Config {
         return this;
     }
 
+    public boolean isEmpty() {
+        return TextUtils.isEmpty(getUrl());
+    }
+
     public String getDesc() {
         if (!TextUtils.isEmpty(getName())) return getName();
         if (!TextUtils.isEmpty(getUrl())) return getUrl();
@@ -137,6 +161,10 @@ public class Config {
 
     public static List<Config> getAll(int type) {
         return AppDatabase.get().getConfigDao().findByType(type);
+    }
+
+    public static List<Config> findUrls() {
+        return AppDatabase.get().getConfigDao().findUrlByType(0);
     }
 
     public static void delete(String url) {
@@ -187,11 +215,13 @@ public class Config {
     }
 
     public Config insert() {
+        if (isEmpty()) return this;
         setId(Math.toIntExact(AppDatabase.get().getConfigDao().insert(this)));
         return this;
     }
 
     public Config update() {
+        if (isEmpty()) return this;
         setTime(System.currentTimeMillis());
         AppDatabase.get().getConfigDao().update(this);
         return this;

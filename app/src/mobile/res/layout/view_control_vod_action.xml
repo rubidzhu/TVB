@@ -16,6 +16,7 @@
 
         <TextView
             android:id="@+id/player"
+            android:layout_marginStart="30dp"
             style="@style/Control.Action"
             tools:text="EXO" />
 
@@ -33,6 +34,12 @@
             android:id="@+id/scale"
             style="@style/Control.Action"
             tools:text="縮放" />
+	    
+	<TextView
+            android:id="@+id/reset"
+            style="@style/Control.Action"
+            android:textColor="@color/text"
+            tools:text="刷新" />
 
         <TextView
             android:id="@+id/loop"
@@ -83,6 +90,14 @@
             android:id="@+id/ending"
             style="@style/Control.Action"
             tools:text="片尾" />
+        //jim add
+        <TextView
+            android:id="@+id/reseting"
+            android:layout_marginEnd="30dp"
+            style="@style/Control.Action"
+            android:tag="3"
+            android:text="@string/control_reset"
+            android:visibility="visible" />
 
     </LinearLayout>
 </HorizontalScrollView>

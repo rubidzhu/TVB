@@ -10,12 +10,11 @@ import androidx.fragment.app.Fragment;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.api.ApiConfig;
-import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.History;
 import com.fongmi.android.tv.databinding.DialogReceiveBinding;
 import com.fongmi.android.tv.event.CastEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
-import com.fongmi.android.tv.net.Callback;
+import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.ui.activity.DetailActivity;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.Notify;
@@ -71,12 +70,12 @@ public class ReceiveDialog extends BaseDialog {
     }
 
     private void onReceiveCast() {
-        if (ApiConfig.getUrl().equals(event.getConfig())) {
+        if (ApiConfig.get().getConfig().equals(event.getConfig())) {
             DetailActivity.cast(getActivity(), event.getHistory().update(ApiConfig.getCid()));
             dismiss();
         } else {
             showProgress();
-            ApiConfig.get().clear().config(Config.find(event.getConfig(), 0)).load(getCallback());
+            ApiConfig.load(event.getConfig(), getCallback());
         }
     }
 

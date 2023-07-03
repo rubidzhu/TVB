@@ -30,12 +30,11 @@ import com.fongmi.android.tv.ui.presenter.TypePresenter;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.Trans;
 import com.fongmi.android.tv.utils.Utils;
-import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class VodActivity extends BaseActivity {
+public class VodActivity extends BaseActivity implements TypePresenter.OnClickListener {
 
     private ActivityVodBinding mBinding;
     private ArrayObjectAdapter mAdapter;
@@ -97,7 +96,7 @@ public class VodActivity extends BaseActivity {
     private void setRecyclerView() {
         mBinding.recycler.setHorizontalSpacing(ResUtil.dp2px(16));
         mBinding.recycler.setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT);
-        mBinding.recycler.setAdapter(new ItemBridgeAdapter(mAdapter = new ArrayObjectAdapter(new TypePresenter(this::updateFilter))));
+        mBinding.recycler.setAdapter(new ItemBridgeAdapter(mAdapter = new ArrayObjectAdapter(new TypePresenter(this))));
     }
 
     private List<Class> getTypes(Result result) {
@@ -140,6 +139,16 @@ public class VodActivity extends BaseActivity {
     }
 
     @Override
+    public void onItemClick(Class item) {
+        updateFilter(item);
+    }
+
+    @Override
+    public void onRefresh(Class item) {
+        getFragment().onRefresh();
+    }
+
+    @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (Utils.isMenuKey(event)) updateFilter((Class) mAdapter.get(mBinding.pager.getCurrentItem()));
         return super.dispatchKeyEvent(event);
@@ -167,7 +176,7 @@ public class VodActivity extends BaseActivity {
         @Override
         public Fragment getItem(int position) {
             Class type = (Class) mAdapter.get(position);
-            String filter = new Gson().toJson(type.getFilters());
+            String filter = App.gson().toJson(type.getFilters());
             return VodFragment.newInstance(getKey(), type.getTypeId(), filter, type.getTypeFlag().equals("1"));
         }
 

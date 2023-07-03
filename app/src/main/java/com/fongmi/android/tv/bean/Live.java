@@ -3,12 +3,12 @@ package com.fongmi.android.tv.bean;
 import android.net.Uri;
 import android.text.TextUtils;
 
-import com.fongmi.android.tv.utils.Utils;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
 
+import java.io.File;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,6 +20,8 @@ public class Live {
     private int type;
     @SerializedName("boot")
     private boolean boot;
+    @SerializedName("pass")
+    private boolean pass;
     @SerializedName("name")
     private String name;
     @SerializedName("group")
@@ -61,7 +63,7 @@ public class Live {
     }
 
     public Live(String url) {
-        this.name = Uri.parse(url).getLastPathSegment();
+        this.name = url.startsWith("file") ? new File(url).getName() : Uri.parse(url).getLastPathSegment();
         this.url = url;
     }
 
@@ -76,6 +78,10 @@ public class Live {
 
     public boolean isBoot() {
         return boot;
+    }
+
+    public boolean isPass() {
+        return pass;
     }
 
     public String getName() {
@@ -111,7 +117,7 @@ public class Live {
     }
 
     public int getPlayerType() {
-        return playerType == null ? -1 : playerType == 1 ? 1 : 0;
+        return playerType == null ? -1 : playerType;
     }
 
     public List<Channel> getChannels() {
@@ -145,7 +151,7 @@ public class Live {
     }
 
     private void setProxy() {
-        this.url = Utils.checkProxy(getChannels().get(0).getUrls().get(0));
+        this.url = getChannels().get(0).getUrls().get(0);
         this.name = getChannels().get(0).getName();
         this.type = 2;
     }

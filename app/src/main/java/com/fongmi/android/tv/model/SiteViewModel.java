@@ -7,17 +7,18 @@ import android.util.ArrayMap;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.api.ApiConfig;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Vod;
-import com.fongmi.android.tv.net.OkHttp;
+import com.fongmi.android.tv.utils.Sniffer;
 import com.fongmi.android.tv.utils.Trans;
 import com.fongmi.android.tv.utils.Utils;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderDebug;
-import com.google.gson.Gson;
+import com.github.catvod.net.OkHttp;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,16 +72,7 @@ public class SiteViewModel extends ViewModel {
                 String body = OkHttp.newCall(site.getApi()).execute().body().string();
                 SpiderDebug.log(body);
                 Result result = site.getType() == 0 ? Result.fromXml(body) : Result.fromJson(body);
-                if (result.getList().isEmpty() || result.getList().get(0).getVodPic().length() > 0) return result;
-                ArrayList<String> ids = new ArrayList<>();
-                for (Vod item : result.getList()) ids.add(item.getVodId());
-                ArrayMap<String, String> params = new ArrayMap<>();
-                params.put("ac", site.getType() == 0 ? "videolist" : "detail");
-                params.put("ids", TextUtils.join(",", ids));
-                body = OkHttp.newCall(site.getApi(), params).execute().body().string();
-                List<Vod> items = site.getType() == 0 ? Result.fromXml(body).getList() : Result.fromJson(body).getList();
-                result.setList(items);
-                return result;
+                return fetchPic(site, result);
             }
         });
     }
@@ -96,8 +88,8 @@ public class SiteViewModel extends ViewModel {
                 return Result.fromJson(categoryContent);
             } else {
                 ArrayMap<String, String> params = new ArrayMap<>();
-                if (site.getType() == 1 && !extend.isEmpty()) params.put("f", new Gson().toJson(extend));
-                else if (site.getType() == 4) params.put("ext", Utils.getBase64(new Gson().toJson(extend)));
+                if (site.getType() == 1 && !extend.isEmpty()) params.put("f", App.gson().toJson(extend));
+                else if (site.getType() == 4) params.put("ext", Utils.getBase64(App.gson().toJson(extend)));
                 params.put("ac", site.getType() == 0 ? "videolist" : "detail");
                 params.put("t", tid);
                 params.put("pg", page);
@@ -161,7 +153,7 @@ public class SiteViewModel extends ViewModel {
                 result.setUrl(url);
                 result.setFlag(flag);
                 result.setPlayUrl(site.getPlayUrl());
-                result.setParse(Utils.isVideoFormat(url) && result.getPlayUrl().isEmpty() ? 0 : 1);
+                result.setParse(Sniffer.isVideoFormat(url) && result.getPlayUrl().isEmpty() ? 0 : 1);
                 return result;
             }
         });
@@ -171,7 +163,7 @@ public class SiteViewModel extends ViewModel {
         if (site.getType() == 3) {
             Spider spider = ApiConfig.get().getCSP(site);
             String searchContent = spider.searchContent(Trans.t2s(keyword), false);
-            SpiderDebug.log(searchContent);
+            SpiderDebug.log(site.getName() + "," + searchContent);
             post(site, Result.fromJson(searchContent));
         } else {
             ArrayMap<String, String> params = new ArrayMap<>();
@@ -179,9 +171,22 @@ public class SiteViewModel extends ViewModel {
             if (site.getType() != 0) params.put("ac", "detail");
             String body = OkHttp.newCall(site.getApi(), params).execute().body().string();
             SpiderDebug.log(site.getName() + "," + body);
-            if (site.getType() == 0) post(site, Result.fromXml(body));
-            else post(site, Result.fromJson(body));
+            Result result = site.getType() == 0 ? Result.fromXml(body) : Result.fromJson(body);
+            post(site, fetchPic(site, result));
         }
+    }
+
+    private Result fetchPic(Site site, Result result) throws Exception {
+        if (result.getList().isEmpty() || result.getList().get(0).getVodPic().length() > 0) return result;
+        ArrayList<String> ids = new ArrayList<>();
+        for (Vod item : result.getList()) ids.add(item.getVodId());
+        ArrayMap<String, String> params = new ArrayMap<>();
+        params.put("ac", site.getType() == 0 ? "videolist" : "detail");
+        params.put("ids", TextUtils.join(",", ids));
+        String body = OkHttp.newCall(site.getApi(), params).execute().body().string();
+        List<Vod> items = site.getType() == 0 ? Result.fromXml(body).getList() : Result.fromJson(body).getList();
+        result.setList(items);
+        return result;
     }
 
     private void post(Site site, Result result) {

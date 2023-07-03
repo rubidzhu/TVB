@@ -21,26 +21,27 @@ import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.ApiConfig;
 import com.fongmi.android.tv.bean.Collect;
 import com.fongmi.android.tv.bean.Hot;
+import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Suggest;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.ActivityCollectBinding;
 import com.fongmi.android.tv.impl.SiteCallback;
 import com.fongmi.android.tv.model.SiteViewModel;
-import com.fongmi.android.tv.net.Callback;
-import com.fongmi.android.tv.net.OkHttp;
+import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.ui.adapter.CollectAdapter;
 import com.fongmi.android.tv.ui.adapter.RecordAdapter;
 import com.fongmi.android.tv.ui.adapter.VodAdapter;
 import com.fongmi.android.tv.ui.adapter.WordAdapter;
 import com.fongmi.android.tv.ui.base.BaseActivity;
-import com.fongmi.android.tv.ui.custom.CustomTextListener;
 import com.fongmi.android.tv.ui.base.ViewType;
+import com.fongmi.android.tv.ui.custom.CustomTextListener;
 import com.fongmi.android.tv.ui.custom.dialog.SiteDialog;
 import com.fongmi.android.tv.utils.PauseThreadPoolExecutor;
 import com.fongmi.android.tv.utils.Prefers;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.Utils;
+import com.github.catvod.net.OkHttp;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -113,6 +114,12 @@ public class CollectActivity extends BaseActivity implements SiteCallback, WordA
                 else getSuggest(s.toString());
             }
         });
+
+        //below add by jim
+        mBinding.search.setOnClickListener(v -> search());
+        mBinding.back.setOnClickListener(view -> onBackPressed());
+        mBinding.delete.setOnClickListener(v -> onDelete());
+        //end if
     }
 
     private void setRecyclerView() {
@@ -175,6 +182,7 @@ public class CollectActivity extends BaseActivity implements SiteCallback, WordA
         mCollectAdapter.clear();
         Utils.hideKeyboard(mBinding.keyword);
         mBinding.site.setVisibility(View.GONE);
+        mBinding.search.setVisibility(View.GONE); //jim add
         mBinding.agent.setVisibility(View.GONE);
         mBinding.view.setVisibility(View.VISIBLE);
         mBinding.result.setVisibility(View.VISIBLE);
@@ -225,6 +233,7 @@ public class CollectActivity extends BaseActivity implements SiteCallback, WordA
         mBinding.view.setVisibility(View.GONE);
         mBinding.result.setVisibility(View.GONE);
         mBinding.site.setVisibility(View.VISIBLE);
+        mBinding.search.setVisibility(View.VISIBLE);  //jim add
         mBinding.agent.setVisibility(View.VISIBLE);
         if (mExecutor != null) mExecutor.shutdownNow();
     }
@@ -248,6 +257,7 @@ public class CollectActivity extends BaseActivity implements SiteCallback, WordA
     @Override
     public void onDataChanged(int size) {
         mBinding.record.setVisibility(size == 0 ? View.GONE : View.VISIBLE);
+        mBinding.delete.setVisibility(size == 0 ? View.GONE : View.VISIBLE);    //jim add
         mBinding.recordRecycler.setVisibility(size == 0 ? View.GONE : View.VISIBLE);
         App.post(() -> mBinding.recordRecycler.requestLayout(), 250);
     }
@@ -261,7 +271,8 @@ public class CollectActivity extends BaseActivity implements SiteCallback, WordA
 
     @Override
     public void onItemClick(Vod item) {
-        DetailActivity.start(this, item.getSiteKey(), item.getVodId(), item.getVodName());
+        if (item.isFolder()) VodActivity.start(this, item.getSiteKey(), Result.folder(item));
+        else DetailActivity.start(this, item.getSiteKey(), item.getVodId(), item.getVodName());
     }
 
     @Override
@@ -288,5 +299,10 @@ public class CollectActivity extends BaseActivity implements SiteCallback, WordA
         } else {
             super.onBackPressed();
         }
+    }
+
+    //jim add
+    private  void onDelete() {
+        mRecordAdapter.deleteAllItems();
     }
 }

@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="6dp"
-    android:background="@drawable/shape_accent"
+    android:background="@drawable/selector_accent_white"
     android:ellipsize="marquee"
     android:focusable="true"
     android:gravity="center"
@@ -13,4 +13,4 @@
     android:singleLine="true"
     android:textColor="@color/control"
     android:textSize="14sp"
-    tools:text="20" />
+    tools:text="20更多选集" />

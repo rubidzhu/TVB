@@ -9,8 +9,14 @@
 
     <item
         android:id="@+id/live"
-        android:icon="@drawable/ic_nav_live"
+        android:icon="@drawable/ic_nav_tv"
         android:title="@string/nav_live"
+        android:visible="false" />
+
+    <item
+        android:id="@+id/keepbot"
+        android:icon="@drawable/ic_nav_keep"
+        android:title="@string/keep"
         android:visible="false" />
 
     <item

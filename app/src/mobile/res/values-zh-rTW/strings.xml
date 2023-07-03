@@ -19,11 +19,10 @@
     <string name="detail_content">簡介</string>
     <string name="detail_search">快搜「<xliff:g name="name">%s</xliff:g>」</string>
 
-    <!-- Cast -->
-    <string name="cast_select">選擇裝置</string>
-    <string name="cast_device_empty">找不到裝置</string>
-    <string name="cast_device_offline">裝置已離線</string>
-    <string name="cast_scan">請掃描影視 QRCode 進行綁定</string>
+    <!-- Device -->
+    <string name="device_select">選擇裝置</string>
+    <string name="device_offline">裝置已離線</string>
+    <string name="device_scan">請掃描影視 QRCode 進行綁定</string>
 
     <!-- Control -->
     <string name="control_speed">倍速</string>
@@ -35,4 +34,21 @@
     <string name="dialog_delete_keep">收藏紀錄將會全部刪除。</string>
     <string name="dialog_delete_history">觀看紀錄將會全部刪除。</string>
 
+    //all add by jim
+    <string-array name="select_speed">
+        <item>0.75</item>
+        <item>1.0</item>
+        <item>1.25</item>
+        <item>1.5</item>
+        <item>2.0</item>
+        <item>2.5</item>
+        <item>3.0</item>
+    </string-array>
+
+    <string name="default_url">https://raw.iqiq.io/rubidzhu/boxxx/main/m.json</string>
+    <string name="detail_order">倒序</string>
+    <string name="detail_keep">收藏</string>
+    <string name="detail_quicksearch">快搜</string>
+    <string name="control_reset">重置</string>
+    <string name="dia_source">视频网站源</string>
 </resources>

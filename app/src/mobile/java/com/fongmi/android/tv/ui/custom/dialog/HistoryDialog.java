@@ -11,6 +11,7 @@ import com.fongmi.android.tv.impl.ConfigCallback;
 import com.fongmi.android.tv.ui.adapter.ConfigAdapter;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.fongmi.android.tv.R; //jim add
 
 public class HistoryDialog implements ConfigAdapter.OnClickListener {
 
@@ -32,7 +33,7 @@ public class HistoryDialog implements ConfigAdapter.OnClickListener {
     public HistoryDialog(Fragment fragment) {
         this.callback = (ConfigCallback) fragment;
         this.binding = DialogHistoryBinding.inflate(LayoutInflater.from(fragment.getContext()));
-        this.dialog = new MaterialAlertDialogBuilder(fragment.getActivity()).setView(binding.getRoot()).create();
+        this.dialog = new MaterialAlertDialogBuilder(fragment.getActivity()).setTitle(R.string.setting_vod).setView(binding.getRoot()).create(); //jim add
         this.adapter = new ConfigAdapter(this);
     }
 

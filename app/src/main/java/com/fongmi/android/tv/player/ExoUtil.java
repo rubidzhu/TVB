@@ -2,10 +2,12 @@ package com.fongmi.android.tv.player;
 
 import android.graphics.Color;
 import android.net.Uri;
+import android.util.Base64;
 
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
+import androidx.media3.common.TrackSelectionOverride;
 import androidx.media3.common.Tracks;
 import androidx.media3.database.DatabaseProvider;
 import androidx.media3.database.StandaloneDatabaseProvider;
@@ -17,8 +19,10 @@ import androidx.media3.datasource.cache.Cache;
 import androidx.media3.datasource.cache.CacheDataSource;
 import androidx.media3.datasource.cache.NoOpCacheEvictor;
 import androidx.media3.datasource.cache.SimpleCache;
+import androidx.media3.datasource.okhttp.OkHttpDataSource;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
+import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.LoadControl;
 import androidx.media3.exoplayer.RenderersFactory;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
@@ -37,12 +41,16 @@ import com.fongmi.android.tv.bean.Sub;
 import com.fongmi.android.tv.utils.FileUtil;
 import com.fongmi.android.tv.utils.Prefers;
 import com.fongmi.android.tv.utils.Sniffer;
+import com.fongmi.android.tv.utils.Utils;
+import com.github.catvod.net.OkHttp;
 import com.google.common.net.HttpHeaders;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import okhttp3.Call;
 
 public class ExoUtil {
 
@@ -53,12 +61,12 @@ public class ExoUtil {
     private static Cache cache;
 
     public static LoadControl buildLoadControl() {
-        return new DefaultLoadControl.Builder().setBufferDurationsMs(DefaultLoadControl.DEFAULT_MIN_BUFFER_MS, DefaultLoadControl.DEFAULT_MAX_BUFFER_MS * 2, DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS, DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS).build();
+        return new DefaultLoadControl();
     }
 
     public static TrackSelector buildTrackSelector() {
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(App.get());
-        trackSelector.setParameters(trackSelector.buildUponParameters().setPreferredTextLanguage("zh"));
+        trackSelector.setParameters(trackSelector.buildUponParameters().setPreferredTextLanguage("zh").setTunnelingEnabled(Prefers.isTunnel()));
         return trackSelector;
     }
 
@@ -76,6 +84,18 @@ public class ExoUtil {
         return count > 0;
     }
 
+    public static void selectTrack(ExoPlayer player, int group, int track) {
+        List<Integer> trackIndices = new ArrayList<>();
+        selectTrack(player, group, track, trackIndices);
+        setTrackParameters(player, group, trackIndices);
+    }
+
+    public static void deselectTrack(ExoPlayer player, int group, int track) {
+        List<Integer> trackIndices = new ArrayList<>();
+        deselectTrack(player, group, track, trackIndices);
+        setTrackParameters(player, group, trackIndices);
+    }
+
     public static MediaSource getSource(Result result, int errorCode) {
         return getSource(result.getHeaders(), result.getRealUrl(), result.getSubs(), errorCode);
     }
@@ -85,12 +105,14 @@ public class ExoUtil {
     }
 
     private static MediaSource getSource(Map<String, String> headers, String url, List<Sub> subs, int errorCode) {
-        return new DefaultMediaSourceFactory(getDataSourceFactory(headers), getExtractorsFactory()).createMediaSource(getMediaItem(url, subs, errorCode));
+        Uri uri = Uri.parse(url.trim().replace("\\", ""));
+        if (uri.getUserInfo() != null) headers.put(HttpHeaders.AUTHORIZATION, "Basic " + Base64.encodeToString(uri.getUserInfo().getBytes(), Base64.NO_WRAP));
+        return new DefaultMediaSourceFactory(getDataSourceFactory(headers), getExtractorsFactory()).createMediaSource(getMediaItem(uri, subs, errorCode));
     }
 
-    private static MediaItem getMediaItem(String url, List<Sub> subs, int errorCode) {
-        MediaItem.Builder builder = new MediaItem.Builder().setUri(Uri.parse(url.trim().replace("\\", "")));
-        if (errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED) builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+    private static MediaItem getMediaItem(Uri uri, List<Sub> subs, int errorCode) {
+        MediaItem.Builder builder = new MediaItem.Builder().setUri(uri);
+        if (errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED || errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED) builder.setMimeType(MimeTypes.APPLICATION_M3U8);
         if (subs.size() > 0) builder.setSubtitleConfigurations(getSubtitles(subs));
         return builder.build();
     }
@@ -101,20 +123,37 @@ public class ExoUtil {
         return items;
     }
 
+    private static void selectTrack(ExoPlayer player, int group, int track, List<Integer> trackIndices) {
+        Tracks.Group trackGroup = player.getCurrentTracks().getGroups().get(group);
+        for (int i = 0; i < trackGroup.length; i++) {
+            if (i == track || trackGroup.isTrackSelected(i)) trackIndices.add(i);
+        }
+    }
+
+    private static void deselectTrack(ExoPlayer player, int group, int track, List<Integer> trackIndices) {
+        Tracks.Group trackGroup = player.getCurrentTracks().getGroups().get(group);
+        for (int i = 0; i < trackGroup.length; i++) {
+            if (i != track && trackGroup.isTrackSelected(i)) trackIndices.add(i);
+        }
+    }
+
+    private static void setTrackParameters(ExoPlayer player, int group, List<Integer> trackIndices) {
+        player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setOverrideForType(new TrackSelectionOverride(player.getCurrentTracks().getGroups().get(group).getMediaTrackGroup(), trackIndices)).build());
+    }
+
     private static synchronized ExtractorsFactory getExtractorsFactory() {
         if (extractorsFactory == null) extractorsFactory = new DefaultExtractorsFactory().setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS).setTsExtractorTimestampSearchBytes(TsExtractor.DEFAULT_TIMESTAMP_SEARCH_BYTES * 3);
         return extractorsFactory;
     }
 
     private static synchronized HttpDataSource.Factory getHttpDataSourceFactory() {
-        if (httpDataSourceFactory == null) httpDataSourceFactory = new DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true);
+        if (httpDataSourceFactory == null) httpDataSourceFactory = Prefers.getHttp() == 0 ? new DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true) : new OkHttpDataSource.Factory((Call.Factory) OkHttp.client());
         return httpDataSourceFactory;
     }
 
     private static synchronized DataSource.Factory getDataSourceFactory(Map<String, String> headers) {
-        if (!headers.containsKey(HttpHeaders.USER_AGENT)) headers.put(HttpHeaders.USER_AGENT, Sniffer.CHROME);
         if (dataSourceFactory == null) dataSourceFactory = buildReadOnlyCacheDataSource(new DefaultDataSource.Factory(App.get(), getHttpDataSourceFactory()), getCache());
-        httpDataSourceFactory.setDefaultRequestProperties(headers);
+        httpDataSourceFactory.setDefaultRequestProperties(Utils.checkHeaders(headers));
         return dataSourceFactory;
     }
 
@@ -130,5 +169,14 @@ public class ExoUtil {
     private static synchronized Cache getCache() {
         if (cache == null) cache = new SimpleCache(FileUtil.getCacheDir("player"), new NoOpCacheEvictor(), getDatabase());
         return cache;
+    }
+
+    public static void reset() {
+        if (cache != null) cache.release();
+        httpDataSourceFactory = null;
+        dataSourceFactory = null;
+        extractorsFactory = null;
+        database = null;
+        cache = null;
     }
 }

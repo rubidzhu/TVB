@@ -4,14 +4,14 @@ import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 
 import com.fongmi.android.tv.App;
-import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.event.RefreshEvent;
-import com.fongmi.android.tv.net.Callback;
-import com.fongmi.android.tv.net.OkHttp;
+import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.utils.FileUtil;
+import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.Prefers;
+import com.github.catvod.net.OkHttp;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,6 +44,10 @@ public class WallConfig {
         return drawable;
     }
 
+    public static void load(Config config, Callback callback) {
+        get().clear().config(config).load(callback);
+    }
+
     public WallConfig init() {
         this.config = Config.wall();
         return this;
@@ -68,10 +72,6 @@ public class WallConfig {
         this.drawable = drawable;
     }
 
-    public void load() {
-        load(new Callback());
-    }
-
     public void load(Callback callback) {
         new Thread(() -> loadConfig(callback)).start();
     }
@@ -92,7 +92,7 @@ public class WallConfig {
 
     private File write(File file) throws IOException {
         if (getUrl().startsWith("file")) FileUtil.copy(FileUtil.getLocal(getUrl()), file);
-        else if (getUrl().startsWith("http")) FileUtil.write(file, Product.resize(OkHttp.newCall(getUrl()).execute().body().bytes()));
+        else if (getUrl().startsWith("http")) FileUtil.write(file, ImgUtil.resize(OkHttp.newCall(getUrl()).execute().body().bytes()));
         else file.delete();
         return file;
     }

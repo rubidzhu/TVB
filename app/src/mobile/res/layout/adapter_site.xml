@@ -8,16 +8,16 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/text"
-        style="?attr/materialButtonOutlinedStyle"
+        android:background="@drawable/shape_item_setting"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:ellipsize="marquee"
         android:gravity="center"
         android:singleLine="true"
-        android:textColor="@color/control"
-        android:textSize="14sp"
-        tools:text="泥巴" />
+        android:textColor="@color/site"
+        android:textSize="16sp"
+        tools:text="泥巴，首页网站" />
 
     <ImageView
         android:id="@+id/search"

@@ -7,6 +7,7 @@ import android.app.Dialog;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Html;
 import android.util.TypedValue;
@@ -37,6 +38,7 @@ import com.fongmi.android.tv.bean.Parse;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Track;
 import com.fongmi.android.tv.bean.Vod;
+import com.fongmi.android.tv.cast.CastVideo;
 import com.fongmi.android.tv.databinding.ActivityDetailBinding;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.event.ErrorEvent;
@@ -54,11 +56,13 @@ import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.base.ViewType;
 import com.fongmi.android.tv.ui.custom.CustomKeyDownVod;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
+import com.fongmi.android.tv.ui.custom.dialog.CastDialog;
 import com.fongmi.android.tv.ui.custom.dialog.ControlDialog;
 import com.fongmi.android.tv.ui.custom.dialog.EpisodeGridDialog;
 import com.fongmi.android.tv.ui.custom.dialog.EpisodeListDialog;
 import com.fongmi.android.tv.ui.custom.dialog.TrackDialog;
 import com.fongmi.android.tv.utils.Clock;
+import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PiP;
 import com.fongmi.android.tv.utils.Prefers;
@@ -80,7 +84,29 @@ import java.util.concurrent.Executors;
 
 import tv.danmaku.ijk.media.player.ui.IjkVideoView;
 
-public class DetailActivity extends BaseActivity implements Clock.Callback, CustomKeyDownVod.Listener, PiPReceiver.Listener, TrackDialog.Listener, ControlDialog.Listener, FlagAdapter.OnClickListener, EpisodeAdapter.OnClickListener, ParseAdapter.OnClickListener {
+//below add by jim
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import android.content.res.TypedArray;
+import android.view.Gravity;
+import android.view.Window;
+import androidx.appcompat.app.AlertDialog;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import androidx.recyclerview.widget.GridLayoutManager;
+import android.content.DialogInterface;
+
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.net.Uri;
+import android.widget.Toast;
+import android.os.Environment;
+import android.util.Log;
+//end if
+
+public class DetailActivity extends BaseActivity implements Clock.Callback, CustomKeyDownVod.Listener, CastDialog.Listener, PiPReceiver.Listener, TrackDialog.Listener, ControlDialog.Listener, FlagAdapter.OnClickListener, EpisodeAdapter.OnClickListener, ParseAdapter.OnClickListener {
 
     private ViewGroup.LayoutParams mFrameParams;
     private ActivityDetailBinding mBinding;
@@ -92,8 +118,9 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
     private ExecutorService mExecutor;
     private SiteViewModel mViewModel;
     private FlagAdapter mFlagAdapter;
-    private List<Dialog> mDialogs;
     private PiPReceiver mReceiver;
+    private List<Dialog> mDialogs;
+    private List<String> mBroken;
     private History mHistory;
     private Players mPlayers;
     private boolean fullscreen;
@@ -104,17 +131,28 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
     private boolean rotate;
     private boolean stop;
     private boolean lock;
+    private int toggleCount;
     private Runnable mR1;
     private Runnable mR2;
     private Runnable mR3;
-    private String mKey;
     private String url;
     private PiP mPiP;
 
-    public static void file(FragmentActivity activity, String url) {
-        String name = new File(url).getName();
-        if (Utils.hasPermission(activity)) start(activity, "push_agent", "file://" + url, name);
-        else PermissionX.init(activity).permissions(Manifest.permission.WRITE_EXTERNAL_STORAGE).request((allGranted, grantedList, deniedList) -> start(activity, "push_agent", "file://" + url, name));
+    private String[] speed; //jim add
+    private String downloadFileName = "1111.mp4";   //jim add
+
+    public static void push(FragmentActivity activity, Uri uri) {
+        if (uri.getScheme().startsWith("smb") || uri.getScheme().startsWith("http")) {
+            push(activity, uri.toString());
+        } else {
+            file(activity, FileChooser.getPathFromUri(activity, uri));
+        }
+    }
+
+    public static void file(FragmentActivity activity, String path) {
+        String name = new File(path).getName();
+        if (Utils.hasPermission(activity)) start(activity, "push_agent", "file://" + path, name);
+        else PermissionX.init(activity).permissions(Manifest.permission.WRITE_EXTERNAL_STORAGE).request((allGranted, grantedList, deniedList) -> start(activity, "push_agent", "file://" + path, name));
     }
 
     public static void cast(Activity activity, History history) {
@@ -123,10 +161,6 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
 
     public static void push(Activity activity, String url) {
         start(activity, "push_agent", url, url);
-    }
-
-    public static void start(Activity activity, String id, String name) {
-        start(activity, ApiConfig.get().getHome().getKey(), id, name);
     }
 
     public static void start(Activity activity, String key, String id, String name) {
@@ -181,6 +215,10 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         return mBinding.ijk;
     }
 
+    private boolean isReplay() {
+        return Prefers.getReset() == 1;
+    }
+
     private boolean isFromCollect() {
         return getCallingActivity() != null && getCallingActivity().getShortClassName().contains(CollectActivity.class.getSimpleName());
     }
@@ -205,19 +243,23 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         mKeyDown = CustomKeyDownVod.create(this, mBinding.video);
         mFrameParams = mBinding.video.getLayoutParams();
         mBinding.progressLayout.showProgress();
+        mBinding.swipeLayout.setEnabled(false);
         mReceiver = new PiPReceiver(this);
         mPlayers = new Players().init();
         mDialogs = new ArrayList<>();
+        mBroken = new ArrayList<>();
         mR1 = this::hideControl;
         mR2 = this::setTraffic;
         mR3 = this::setOrient;
         mPiP = new PiP();
-        mKey = getKey();
         setRecyclerView();
         setVideoView();
         setViewModel();
         showProgress();
         getDetail();
+
+        mBinding.control.action.speed.setText((speed = ResUtil.getStringArray(R.array.select_speed))[(int)mPlayers.getSpeed()]); //jim add
+        checkKeepnewImg();  //jim add
     }
 
     @Override
@@ -228,9 +270,10 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         mBinding.actor.setOnClickListener(view -> onActor());
         mBinding.content.setOnClickListener(view -> onContent());
         mBinding.reverse.setOnClickListener(view -> onReverse());
+        mBinding.control.cast.setOnClickListener(view -> onCast());
         mBinding.control.back.setOnClickListener(view -> onFull());
         mBinding.control.full.setOnClickListener(view -> onFull());
-        mBinding.control.keep.setOnClickListener(view -> onKeep());
+        //mBinding.control.keep.setOnClickListener(view -> onKeep()); jim edit
         mBinding.control.lock.setOnClickListener(view -> onLock());
         mBinding.control.share.setOnClickListener(view -> onShare());
         mBinding.control.play.setOnClickListener(view -> checkPlay());
@@ -243,19 +286,31 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         mBinding.control.action.video.setOnClickListener(this::onTrack);
         mBinding.control.action.loop.setOnClickListener(view -> onLoop());
         mBinding.control.action.scale.setOnClickListener(view -> onScale());
-        mBinding.control.action.speed.setOnClickListener(view -> onSpeed());
+        //mBinding.control.action.speed.setOnClickListener(view -> onSpeed());	jim delete
+        mBinding.control.action.reset.setOnClickListener(view -> onReset());
         mBinding.control.action.player.setOnClickListener(view -> onPlayer());
         mBinding.control.action.decode.setOnClickListener(view -> onDecode());
         mBinding.control.action.ending.setOnClickListener(view -> onEnding());
         mBinding.control.action.opening.setOnClickListener(view -> onOpening());
         mBinding.control.action.episodes.setOnClickListener(view -> onEpisodes());
         mBinding.control.action.speed.setOnLongClickListener(view -> onSpeedLong());
+        mBinding.control.action.reset.setOnLongClickListener(view -> onResetToggle());
         mBinding.control.action.ending.setOnLongClickListener(view -> onEndingReset());
         mBinding.control.action.opening.setOnLongClickListener(view -> onOpeningReset());
         mBinding.video.setOnTouchListener((view, event) -> mKeyDown.onTouchEvent(event));
         mBinding.control.action.getRoot().setOnTouchListener(this::onActionTouch);
-        mBinding.swipeLayout.setOnRefreshListener(this::getDetail);
+        mBinding.swipeLayout.setOnRefreshListener(this::onSwipeRefresh);
         mBinding.control.seek.setListener(mPlayers);
+
+        //below add by jim
+        mBinding.order.setOnClickListener(view -> onOrder());
+        mBinding.keepnew.setOnClickListener(view -> onKeepnew());
+        mBinding.quicksearch.setOnClickListener(view -> onQuicksearch());
+        mBinding.control.action.speed.setOnClickListener(view -> setSpeednew());
+        mBinding.control.action.reseting.setOnClickListener(view -> onReseting());
+        mBinding.control.backnew.setOnClickListener(view -> onFull());
+        mBinding.control.download.setOnClickListener(view -> onDownload());
+        //end if
     }
 
     private void setRecyclerView() {
@@ -275,9 +330,11 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
     }
 
     private void setPlayerView() {
+        getIjk().setPlayer(mPlayers.getPlayer());
         mBinding.control.action.player.setText(mPlayers.getPlayerText());
         getExo().setVisibility(mPlayers.isExo() ? View.VISIBLE : View.GONE);
         getIjk().setVisibility(mPlayers.isIjk() ? View.VISIBLE : View.GONE);
+        mBinding.control.action.reset.setText(ResUtil.getStringArray(R.array.select_reset)[Prefers.getReset()]);
         mBinding.video.addOnLayoutChangeListener((view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> mPiP.update(getActivity(), view));
     }
 
@@ -287,7 +344,6 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
 
     private void setVideoView() {
         mPlayers.set(getExo(), getIjk());
-        getIjk().setRender(Prefers.getRender());
         if (ResUtil.isLand(this)) enterFullscreen();
         getExo().getSubtitleView().setStyle(ExoUtil.getCaptionStyle());
         getIjk().getSubtitleView().setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
@@ -328,6 +384,7 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         getIntent().putExtra("key", item.getSiteKey());
         getIntent().putExtra("id", item.getVodId());
         mBinding.swipeLayout.setRefreshing(true);
+        mBinding.swipeLayout.setEnabled(false);
         mBinding.scroll.scrollTo(0, 0);
         Clock.get().setCallback(null);
         mPlayers.stop();
@@ -341,12 +398,18 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         updateHistory(episode, replay);
         showProgress();
         setUrl(null);
+
+
+        // 构造下载文件名 add by jim
+        downloadFileName = String.format("%s - %s.mp4", mBinding.name.getText().toString(), episode.getName());
+		//edd if
     }
 
     private void setEmpty() {
         if (isFromCollect()) {
             finish();
         } else if (getName().isEmpty()) {
+            mBinding.swipeLayout.setEnabled(true);
             mBinding.progressLayout.showEmpty();
         } else {
             checkSearch();
@@ -367,6 +430,7 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         setOther(mBinding.other, item);
         checkFlag(item);
         checkKeepImg();
+        checkKeepnewImg();  //jim add
     }
 
     private void setText(TextView view, int resId, String text) {
@@ -448,12 +512,16 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
     }
 
     private void onContent() {
-        mBinding.content.setMaxLines(mBinding.content.getMaxLines() == 2 ? Integer.MAX_VALUE : 2);
+        mBinding.content.setMaxLines(mBinding.content.getMaxLines() == 5 ? Integer.MAX_VALUE : 5);  //jim edit
     }
 
     private void onReverse() {
         mHistory.setRevSort(!mHistory.isRevSort());
         reverseEpisode(false);
+    }
+
+    private void onCast() {
+        CastDialog.create().history(mHistory).video(CastVideo.get(getName(), getUrl())).fm(true).show(this);
     }
 
     private void onFull() {
@@ -468,6 +536,7 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         else createKeep();
         RefreshEvent.keep();
         checkKeepImg();
+        checkKeepnewImg();	//jim add
     }
 
     private void onLock() {
@@ -479,7 +548,10 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
     }
 
     private void onShare() {
-        new ShareCompat.IntentBuilder(this).setType("text/plain").setText(getUrl()).startChooser();
+        ShareCompat.IntentBuilder builder = new ShareCompat.IntentBuilder(this).setType("text/plain").setText(getUrl());
+        builder.getIntent().putExtra("title", mBinding.control.title.getText());
+        builder.getIntent().putExtra("name", mBinding.control.title.getText());
+        builder.startChooser();
     }
 
     private void checkPlay() {
@@ -520,7 +592,7 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
     }
 
     private void onSetting() {
-        mControlDialog = ControlDialog.create().detail(mBinding).players(mPlayers).parse(isUseParse()).show(this);
+        mControlDialog = ControlDialog.create().detail(mBinding).history(mHistory).players(mPlayers).parse(isUseParse()).show(this);
     }
 
     private void onTrack(View view) {
@@ -561,16 +633,25 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
     }
 
     private void onReset() {
+        onReset(isReplay());
+    }
+
+    private void onReset(boolean replay) {
         Clock.get().setCallback(null);
         if (mFlagAdapter.getItemCount() == 0) return;
         if (mEpisodeAdapter.getItemCount() == 0) return;
-        getPlayer(getFlag(), getEpisode(), true);
+        getPlayer(getFlag(), getEpisode(), replay);
+    }
+
+    private boolean onResetToggle() {
+        Prefers.putReset(Math.abs(Prefers.getReset() - 1));
+        mBinding.control.action.reset.setText(ResUtil.getStringArray(R.array.select_reset)[Prefers.getReset()]);
+        return true;
     }
 
     private void onPlayer() {
         mPlayers.togglePlayer();
         Prefers.putPlayer(mPlayers.getPlayer());
-        mHistory.setPlayer(mPlayers.getPlayer());
         setPlayerView();
         setR1Callback();
         onRefresh();
@@ -623,6 +704,11 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
     private boolean onActionTouch(View v, MotionEvent e) {
         setR1Callback();
         return false;
+    }
+
+    private void onSwipeRefresh() {
+        if (mBinding.progressLayout.isEmpty()) getDetail();
+        else onRefresh();
     }
 
     private void toggleFullscreen() {
@@ -692,12 +778,13 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
 
     private void showControl() {
         mBinding.control.share.setVisibility(getUrl() == null || isFullscreen() ? View.GONE : View.VISIBLE);
-        mBinding.control.keep.setVisibility(mHistory == null || isFullscreen() ? View.GONE : View.VISIBLE);
+        //mBinding.control.keep.setVisibility(mHistory == null || isFullscreen() ? View.GONE : View.VISIBLE);   jim edit
         mBinding.control.parse.setVisibility(isFullscreen() && isUseParse() ? View.VISIBLE : View.GONE);
         mBinding.control.rotate.setVisibility(isFullscreen() && !isLock() ? View.VISIBLE : View.GONE);
         mBinding.control.back.setVisibility(isFullscreen() && !isLock() ? View.VISIBLE : View.GONE);
         mBinding.control.action.getRoot().setVisibility(isFullscreen() ? View.VISIBLE : View.GONE);
-        mBinding.control.setting.setVisibility(isFullscreen() ? View.GONE : View.VISIBLE);
+        mBinding.control.share.setVisibility(getUrl() == null ? View.GONE : View.VISIBLE);
+        mBinding.control.cast.setVisibility(getUrl() == null ? View.GONE : View.VISIBLE);
         mBinding.control.lock.setVisibility(isFullscreen() ? View.VISIBLE : View.GONE);
         mBinding.control.center.setVisibility(isLock() ? View.GONE : View.VISIBLE);
         mBinding.control.bottom.setVisibility(isLock() ? View.GONE : View.VISIBLE);
@@ -705,6 +792,13 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         mBinding.control.getRoot().setVisibility(View.VISIBLE);
         checkPlayImg(mPlayers.isPlaying());
         setR1Callback();
+
+        //below add by jim
+        updateTime();
+        mBinding.control.backnew.setVisibility(isFullscreen() && !isLock() ? View.VISIBLE : View.GONE);
+        mBinding.control.time.setVisibility(isFullscreen() ? View.VISIBLE : View.GONE);
+        mBinding.control.download.setVisibility(getUrl() == null || isFullscreen() ? View.GONE : View.VISIBLE);
+        //end if
     }
 
     private void hideControl() {
@@ -772,7 +866,7 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
     }
 
     private void checkKeepImg() {
-        mBinding.control.keep.setImageResource(Keep.find(getHistoryKey()) == null ? R.drawable.ic_control_keep_off : R.drawable.ic_control_keep_on);
+        //mBinding.control.keep.setImageResource(Keep.find(getHistoryKey()) == null ? R.drawable.ic_control_keep_off : R.drawable.ic_control_keep_on);  jim edit
     }
 
     private void checkPlayImg(boolean playing) {
@@ -828,12 +922,15 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
             case Player.STATE_READY:
                 stopSearch();
                 checkRotate();
+                resetToggle();
                 hideProgress();
                 mPlayers.reset();
                 setDefaultTrack();
                 setTrackVisible(true);
                 checkPlayImg(mPlayers.isPlaying());
+                mHistory.setPlayer(mPlayers.getPlayer());
                 mBinding.control.size.setText(mPlayers.getSizeText());
+                if (isVisible(mBinding.control.getRoot())) showControl();
                 break;
             case Player.STATE_ENDED:
                 checkEnded();
@@ -856,7 +953,7 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
 
     private void checkEnded() {
         if (mBinding.control.action.loop.isActivated()) {
-            onReset();
+            onReset(true);
         } else {
             checkNext();
         }
@@ -878,13 +975,31 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onErrorEvent(ErrorEvent event) {
-        if (!event.isRetry() || mPlayers.addRetry() > 3) onError(event);
+        if (!event.isRetry() || mPlayers.addRetry() > 3) checkError(event);
         else onRefresh();
     }
 
+    private void checkError(ErrorEvent event) {
+        if (getSite().getPlayerType() == -1 && event.isFormat() && getToggleCount() < 3) {
+            toggleCount++;
+            nextPlayer();
+        } else {
+            resetToggle();
+            onError(event);
+        }
+    }
+
+    private void nextPlayer() {
+        mPlayers.togglePlayer();
+        setPlayerView();
+        onRefresh();
+    }
+
     private void onError(ErrorEvent event) {
+        mBinding.swipeLayout.setEnabled(true);
         Clock.get().setCallback(null);
         showError(event.getMsg());
+        mBroken.add(getId());
         mPlayers.stop();
         startFlow();
     }
@@ -964,6 +1079,7 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
 
     private boolean mismatch(Vod item) {
         String keyword = getName();
+        if (mBroken.contains(item.getVodId())) return true;
         if (isAutoMode()) return !item.getVodName().equals(keyword);
         else return !item.getVodName().contains(keyword);
     }
@@ -983,7 +1099,6 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
     private void nextSite() {
         if (mSearchAdapter.getItemCount() == 0) return;
         Vod vod = mSearchAdapter.get(0);
-        if (vod.getSiteKey().equals(mKey)) return;
         Notify.show(getString(R.string.play_switch_site, vod.getSiteName()));
         mSearchAdapter.remove(0);
         setInitAuto(false);
@@ -1062,8 +1177,22 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         this.url = url;
     }
 
+    public int getToggleCount() {
+        return toggleCount;
+    }
+
+    public void resetToggle() {
+        this.toggleCount = 0;
+    }
+
     private void notifyItemChanged(RecyclerView.Adapter<?> adapter) {
         adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+    }
+
+    @Override
+    public void onCastTo() {
+        checkPlayImg(false);
+        mPlayers.pause();
     }
 
     @Override
@@ -1210,6 +1339,7 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         super.onStart();
         mPlayers.play();
         setStop(false);
+        Clock.start();
     }
 
     @Override
@@ -1217,18 +1347,6 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         super.onStop();
         mPlayers.pause();
         setStop(true);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        Clock.start();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        RefreshEvent.history();
         Clock.stop();
     }
 
@@ -1244,10 +1362,163 @@ public class DetailActivity extends BaseActivity implements Clock.Callback, Cust
         }
     }
 
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         mPlayers.release();
+        RefreshEvent.history();
         App.removeCallbacks(mR1, mR2, mR3);
     }
+
+    //bellow add by jim
+    private void onQuicksearch() {
+        String name = mBinding.name.getText().toString();
+        Notify.show(getString(R.string.detail_search, name));
+        initSearch(name, false);
+    }
+
+    private void onOrder() {
+        mHistory.setRevSort(!mHistory.isRevSort());
+        reverseEpisode(false);
+    }
+
+    private void checkKeepnewImg() {
+        mBinding.keepnew.setImageResource(Keep.find(getHistoryKey()) == null ? R.drawable.ic_control_keepnew_off : R.drawable.ic_control_keepnew_on);
+    }
+
+    public void onBacknewPressed() {
+        if (isVisible(mBinding.control.getRoot())) {
+            hideControl();
+        } else if (isFullscreen() && !isLock()) {
+            exitFullscreen();
+        } else if (!isLock()) {
+            stopSearch();
+            finish();
+        }
+    }
+
+    private void updateTime() {
+        TextView timeTextView = mBinding.control.time;
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+        String currentTime = sdf.format(new Date());
+        timeTextView.setText(currentTime);
+    }
+
+    private boolean onReseting() {
+        mHistory.setEnding(0);
+        mBinding.control.action.ending.setText(R.string.play_ed);
+        setR1Callback();
+        mHistory.setOpening(0);
+        mBinding.control.action.opening.setText(R.string.play_op);
+        setR1Callback();
+        return true;
+    }
+
+    private void onKeepnew() {
+        Keep keep = Keep.find(getHistoryKey());
+        Notify.show(keep != null ? R.string.keep_del : R.string.keep_add);
+        if (keep != null) keep.delete();
+        else createKeep();
+        RefreshEvent.keep();
+        checkKeepImg();
+        checkKeepnewImg();
+    }
+
+    private static final String DOWN_DIR = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getPath() + "/zhuzhuyingwo/";
+
+    private void onDownload() {
+        int download = Prefers.getDownload();
+        if(download == 0) {
+            // 使用内置下载方式
+            useOKhttpDownload();
+        } else {
+            // 使用IDM下载方式
+            use1DMDownload();
+        }
+    }
+
+    private void useOKhttpDownload() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("提示");
+        builder.setMessage("内置下载方式正在开发中，请先使用1DM方式下载。");
+        builder.setPositiveButton("确定", null);
+        builder.show();
+
+        File downloadFilePath = new File(DOWN_DIR);
+        if (!downloadFilePath.exists()) {
+            downloadFilePath.mkdirs();
+        }
+    }
+
+    private void use1DMDownload() {
+        // 构造1DM下载地址
+        String downloadUrl = getUrl();
+
+        // 创建Intent对象，启动1DM App
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl));
+        intent.setDataAndType(Uri.parse(downloadUrl), "video/mp4");
+        intent.putExtra("title", downloadFileName); // 传入文件保存名
+        intent.setClassName("idm.internet.download.manager.plus", "idm.internet.download.manager.MainActivity");
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        // 检查1DM App是否已安装
+        PackageManager pm = getPackageManager();
+        List<ResolveInfo> activities = pm.queryIntentActivities(intent, 0);
+        boolean isIntentSafe = activities.size() > 0;
+
+        if (isIntentSafe) {
+            startActivity(intent); // 启动1DM App
+        } else {
+            // 如果1DM App未安装，提示用户安装1DM App
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("请先安装1DM+下载管理器");
+            builder.setMessage("为了下载视频，请先安装1DM+下载管理器。是否现在安装？");
+            builder.setPositiveButton("立即下载", new DialogInterface.OnClickListener() {
+
+                public void onClick(DialogInterface dialog, int which) {
+                    // 跳转到下载链接
+                    Intent downloadIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://od.lk/d/MzRfMTg0NTcxMDdf/1DM _v15.6.apk"));
+                    startActivity(downloadIntent);
+                }
+            });
+            builder.setNegativeButton("取消", null);
+            builder.show();
+        }
+
+    }
+
+    //jim add edit
+    private void setSpeednew() {
+        String[] speedOptions = getResources().getStringArray(R.array.select_speed);
+        int speedIndex = -1; // 设置默认值为-1
+        float playerSpeed = mPlayers.getSpeed();
+        for (int i = 0; i < speedOptions.length; i++) {
+            if (Float.parseFloat(speedOptions[i]) == playerSpeed) { // 如果找到相匹配的速度值，则记录它的索引
+                speedIndex = i;
+                break;
+            }
+        }
+        AlertDialog alertDialog = new MaterialAlertDialogBuilder(getActivity())
+                //.setTitle(R.string.control_speed)
+                .setBackground(new ColorDrawable(Color.parseColor("#FFFAFA")))
+                .setSingleChoiceItems(speedOptions, speedIndex, (dialog, which) -> {
+                    float speedValue = Float.parseFloat(speedOptions[which]);
+                    mBinding.control.action.speed.setText(mPlayers.setSpeed(speedValue));
+                    mHistory.setSpeed(mPlayers.getSpeed());
+                    dialog.dismiss();
+                })
+                .show();
+
+        int width = 5 * mBinding.control.action.speed.getWidth();
+        int height = 10 * mBinding.control.action.speed.getHeight();
+        Window window = alertDialog.getWindow(); // 获取Window对象
+        window.setLayout(width, height); // 设置弹出窗口的宽度为MATCH_PARENT，高度为WRAP_CONTENT
+        window.setGravity(Gravity.START | Gravity.CENTER_VERTICAL); // 设置弹出窗口的位置为左侧
+
+        setR1Callback();
+    }
+
+    //end if
+
 }

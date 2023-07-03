@@ -12,7 +12,7 @@ import com.fongmi.android.tv.bean.Group;
 import com.fongmi.android.tv.bean.Keep;
 import com.fongmi.android.tv.bean.Live;
 import com.fongmi.android.tv.db.AppDatabase;
-import com.fongmi.android.tv.net.Callback;
+import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.utils.Json;
 import com.fongmi.android.tv.utils.Prefers;
 import com.google.gson.JsonElement;
@@ -58,7 +58,11 @@ public class LiveConfig {
     }
 
     public static boolean hasUrl() {
-        return getUrl().length() > 0;
+        return getUrl() != null && getUrl().length() > 0;
+    }
+
+    public static void load(Config config, Callback callback) {
+        get().clear().config(config).load(callback);
     }
 
     public LiveConfig init() {
@@ -176,7 +180,7 @@ public class LiveConfig {
     }
 
     public void setKeep(Channel channel) {
-        if (channel.getGroup().isHidden() || home == null) return;
+        if (home == null || channel.getGroup().isHidden() || channel.getUrls().isEmpty()) return;
         Prefers.putKeep(home.getName() + AppDatabase.SYMBOL + channel.getGroup().getName() + AppDatabase.SYMBOL + channel.getName() + AppDatabase.SYMBOL + channel.getCurrent());
     }
 

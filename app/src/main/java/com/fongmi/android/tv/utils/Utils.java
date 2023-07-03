@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 import android.provider.Settings;
@@ -17,16 +16,17 @@ import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
 
 import androidx.fragment.app.FragmentActivity;
+import androidx.media3.common.util.UriUtil;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.server.Server;
+import com.google.common.net.HttpHeaders;
 import com.permissionx.guolindev.PermissionX;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
-import java.util.HashMap;
 import java.util.Map;
 
 public class Utils {
@@ -85,23 +85,18 @@ public class Utils {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && App.get().getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE);
     }
 
-    public static boolean isVideoFormat(String url) {
-        return isVideoFormat(url, new HashMap<>());
-    }
-
-    public static boolean isVideoFormat(String url, Map<String, String> headers) {
-        if (Sniffer.CUSTOM.matcher(url).find()) return true;
-        if (headers.containsKey("Accept") && headers.get("Accept").startsWith("image")) return false;
-        if (url.contains("url=http") || url.contains("v=http") || url.contains(".css") || url.contains(".html")) return false;
-        return Sniffer.RULE.matcher(url).find();
-    }
-
     public static boolean isAutoRotate() {
         return Settings.System.getInt(App.get().getContentResolver(), Settings.System.ACCELEROMETER_ROTATION, 0) == 1;
     }
 
     public static boolean hasPermission(FragmentActivity activity) {
         return PermissionX.isGranted(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+    }
+
+    public static Map<String, String> checkHeaders(Map<String, String> headers) {
+        if (Prefers.getUa().isEmpty() || headers.containsKey(HttpHeaders.USER_AGENT) || headers.containsKey(HttpHeaders.USER_AGENT.toLowerCase())) return headers;
+        headers.put(HttpHeaders.USER_AGENT, Prefers.getUa());
+        return headers;
     }
 
     public static String checkProxy(String url) {
@@ -122,12 +117,7 @@ public class Utils {
     public static String convert(String baseUrl, String text) {
         if (TextUtils.isEmpty(text)) return "";
         if (text.startsWith("clan")) return checkClan(text);
-        if (text.startsWith(".")) text = text.substring(1);
-        if (text.startsWith("/")) text = text.substring(1);
-        String last = Uri.parse(baseUrl).getLastPathSegment();
-        if (last == null) return Uri.parse(baseUrl).getScheme() + "://" + text;
-        int index = baseUrl.lastIndexOf(last);
-        return baseUrl.substring(0, index) + text;
+        return UriUtil.resolve(baseUrl, text);
     }
 
     public static String getMd5(String src) {
@@ -183,6 +173,7 @@ public class Utils {
         try {
             if (text.startsWith("上") || text.startsWith("下")) return -1;
             if (text.contains(".")) text = text.substring(0, text.lastIndexOf("."));
+            if (text.startsWith("4k")) text = text.replace("4k", "");
             return Integer.parseInt(text.replaceAll("\\D+", ""));
         } catch (Exception e) {
             return -1;

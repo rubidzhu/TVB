@@ -4,6 +4,7 @@
         <item name="android:windowTranslucentStatus">true</item>
     </style>
 
+
     <style name="AppTheme.Detail" parent="AppTheme">
         <item name="android:statusBarColor">@color/black</item>
         <item name="android:windowTranslucentStatus">false</item>
@@ -51,8 +52,24 @@
         <item name="cornerSize">16dp</item>
     </style>
 
+    <!-- jim -->
     <style name="Indicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
-        <item name="android:color">@color/indicator</item>
+        <item name="android:color">@color/transparent</item>
     </style>
 
+    <!-- Jim add -->
+    <style name="AppThemeBot" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- 顶部和底部的颜色设置 -->
+        <item name="android:navigationBarColor">@color/black_bot</item>
+        <item name="android:statusBarColor">@color/transparent</item>
+    </style>
+
+    <style name="PopupMenuStyle" parent="@android:style/Widget.PopupMenu">
+        <item name="android:popupBackground">@android:color/white</item>
+        <item name="android:dropDownHorizontalOffset">-20dp</item>
+        <item name="android:dropDownVerticalOffset">10dp</item>
+        <item name="android:dropDownWidth">1800dp</item>
+        <item name="android:dropDownHeight">wrap_content</item>
+    </style>
+	//end
 </resources>

@@ -1,7 +1,7 @@
 <resources xmlns:xliff="http://schemas.android.com/apk/res-auto">
 
     <!-- App -->
-    <string name="app_name">影視</string>
+    <string name="app_name">猪猪影窝</string>
     <string name="app_exit">再按一次返回鍵退出</string>
 
     <!-- Vod -->
@@ -61,13 +61,20 @@
     <string name="setting_live">直播</string>
     <string name="setting_wall">壁紙</string>
     <string name="setting_player">播放器</string>
+    <string name="setting_player_ua">User-Agent</string>
+    <string name="setting_player_http">連線方式</string>
+    <string name="setting_player_tunnel">隧道模式</string>
     <string name="setting_decode">解碼方式</string>
     <string name="setting_render">渲染方式</string>
     <string name="setting_scale">縮放比例</string>
     <string name="setting_quality">圖片品質</string>
     <string name="setting_size">圖片尺寸</string>
+    <string name="setting_doh">DoH</string>
+    <string name="setting_cache">暫存</string>
     <string name="setting_version">版本</string>
     <string name="setting_storage">權限</string>
+    <string name="setting_off">關</string>
+    <string name="setting_on">開</string>
 
     <!-- Search -->
     <string name="search_keyword">關鍵字…</string>
@@ -80,6 +87,7 @@
     <string name="dialog_negative">取消</string>
     <string name="dialog_config_hint">請輸入接口…</string>
     <string name="dialog_config_url">請輸入網址…</string>
+    <string name="dialog_history">历史配置网址</string>  //jim add
 
     <!-- Error -->
     <string name="error_config_get">配置取得失敗</string>
@@ -114,8 +122,14 @@
     </string-array>
 
     <string-array name="select_player">
-        <item>EXO</item>
+        <item>系統</item>
         <item>IJK</item>
+        <item>EXO</item>
+    </string-array>
+
+    <string-array name="select_player_http">
+        <item>預設</item>
+        <item>OkHttp</item>
     </string-array>
 
     <string-array name="select_quality">
@@ -144,4 +158,31 @@
         <item>重播</item>
     </string-array>
 
+    //jim add
+    <string-array name="select_speed">
+        <item>0.5</item>
+        <item>1.0</item>
+        <item>1.25</item>
+        <item>1.5</item>
+        <item>2.0</item>
+    </string-array>
+
+    //bellow add by jim
+    <string-array name="url_text">
+        <item>自用精选网址-1(推荐)</item>
+        <item>自用备选网址-2</item>
+        <item>本地配置网址-3(载入快)</item>
+    </string-array>
+
+    <string-array name="default_url">
+        <item>https://ghproxy.com/https://raw.githubusercontent.com/rubidzhu/boxxx/dev/sim.json</item>
+        <item>https://ghproxy.com/https://raw.githubusercontent.com/zzjyy/gaozz/dev/zhuzhu222.json</item>
+        <item>clan://localhost/zhuzhuyingwo/localApi/api.json</item>
+    </string-array>
+
+    <string-array name="select_download">
+        <item>内置下载</item>
+        <item>IDM+下载</item>
+    </string-array>
+    //end if
 </resources>

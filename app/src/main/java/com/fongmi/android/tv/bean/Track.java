@@ -6,6 +6,7 @@ import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 import com.fongmi.android.tv.db.AppDatabase;
+import com.fongmi.android.tv.player.Players;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ public class Track {
     private String key;
     private String name;
     private boolean selected;
+    private boolean adaptive;
 
     public Track(int type, String name) {
         this.type = type;
@@ -91,12 +93,20 @@ public class Track {
         this.selected = selected;
     }
 
+    public boolean isAdaptive() {
+        return adaptive;
+    }
+
+    public void setAdaptive(boolean adaptive) {
+        this.adaptive = adaptive;
+    }
+
     public boolean isExo(int player) {
-        return getPlayer() == player && player == 0;
+        return getPlayer() == player && player == Players.EXO;
     }
 
     public boolean isIjk(int player) {
-        return getPlayer() == player && player == 1;
+        return getPlayer() == player && player != Players.EXO;
     }
 
     public Track toggle() {

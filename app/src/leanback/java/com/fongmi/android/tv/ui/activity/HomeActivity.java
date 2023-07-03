@@ -1,5 +1,7 @@
 package com.fongmi.android.tv.ui.activity;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.view.KeyEvent;
 import android.view.View;
 
@@ -20,7 +22,6 @@ import com.fongmi.android.tv.Updater;
 import com.fongmi.android.tv.api.ApiConfig;
 import com.fongmi.android.tv.api.LiveConfig;
 import com.fongmi.android.tv.api.WallConfig;
-import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Func;
 import com.fongmi.android.tv.bean.History;
 import com.fongmi.android.tv.bean.Result;
@@ -30,8 +31,8 @@ import com.fongmi.android.tv.databinding.ActivityHomeBinding;
 import com.fongmi.android.tv.event.CastEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.event.ServerEvent;
+import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.model.SiteViewModel;
-import com.fongmi.android.tv.net.Callback;
 import com.fongmi.android.tv.server.Server;
 import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
@@ -54,6 +55,28 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.List;
 
+//bellow add by jim ltv
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.SharedPreferences;
+import android.os.Environment;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import java.io.File;
+import java.io.InputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipEntry;
+import android.util.Log;
+import com.fongmi.android.tv.BuildConfig;
+import android.Manifest;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import android.widget.Toast;
+import android.os.AsyncTask;
+//end if
+
 public class HomeActivity extends BaseActivity implements CustomTitleView.Listener, VodPresenter.OnClickListener, FuncPresenter.OnClickListener, HistoryPresenter.OnClickListener {
 
     private ActivityHomeBinding mBinding;
@@ -70,14 +93,22 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        checkAction(intent);
+    }
+
+    @Override
     protected void initView() {
         mBinding.progressLayout.showProgress();
-        Updater.get().start();
+        Updater.get().release().start();
         Server.get().start();
         setRecyclerView();
         setViewModel();
         setAdapter();
         initConfig();
+
+        initWelcomeview();  //jim add
     }
 
     @Override
@@ -90,6 +121,20 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                 if (mHistoryPresenter.isDelete()) setHistoryDelete(false);
             }
         });
+
+        //bellow add by jim
+        LoadApiFileTask task = new LoadApiFileTask();
+        task.execute();
+		//end if
+    }
+
+    private void checkAction(Intent intent) {
+        boolean push = ApiConfig.hasPush() && intent.getAction() != null;
+        if (push && intent.getAction().equals(Intent.ACTION_SEND) && intent.getType().equals("text/plain")) {
+            DetailActivity.push(this, Uri.parse(intent.getStringExtra(Intent.EXTRA_TEXT)));
+        } else if (push && intent.getAction().equals(Intent.ACTION_VIEW) && intent.getData().getScheme() != null) {
+            DetailActivity.push(this, intent.getData());
+        }
     }
 
     private void setRecyclerView() {
@@ -129,6 +174,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             @Override
             public void success() {
                 mBinding.progressLayout.showContent();
+                checkAction(getIntent());
                 getHistory();
                 getVideo();
                 setFocus();
@@ -207,6 +253,12 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private int getRecommendIndex() {
         for (int i = 0; i < mAdapter.size(); i++) if (mAdapter.get(i).equals(R.string.home_recommend)) return i + 1;
         return -1;
+    }
+
+    private void setConfirm() {
+        confirm = true;
+        Notify.show(R.string.app_exit);
+        App.post(() -> confirm = false, 2000);
     }
 
     @Override
@@ -313,10 +365,10 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onCastEvent(CastEvent event) {
-        if (ApiConfig.getUrl().equals(event.getConfig())) {
+        if (ApiConfig.get().getConfig().equals(event.getConfig())) {
             DetailActivity.cast(this, event.getHistory().update(ApiConfig.getCid()));
         } else {
-            ApiConfig.get().clear().config(Config.find(event.getConfig(), 0)).load(getCallback(event));
+            ApiConfig.load(event.getConfig(), getCallback(event));
         }
     }
 
@@ -356,14 +408,14 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     public void onBackPressed() {
-        if (mHistoryPresenter.isDelete()) {
+        if (mBinding.progressLayout.isProgress()) {
+            mBinding.progressLayout.showContent();
+        } else if (mHistoryPresenter.isDelete()) {
             setHistoryDelete(false);
         } else if (mBinding.recycler.getSelectedPosition() != 0) {
             mBinding.recycler.scrollToPosition(0);
         } else if (!confirm) {
-            confirm = true;
-            Notify.show(R.string.app_exit);
-            App.post(() -> confirm = false, 2000);
+            setConfirm();
         } else {
             finish();
         }
@@ -377,4 +429,132 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         ApiConfig.get().clear();
         Server.get().stop();
     }
+
+    //bellow by jim ltv
+    private void initWelcomeview () {
+        // 获取SharedPreferences对象
+        SharedPreferences preferences = getSharedPreferences("app", MODE_PRIVATE);
+
+        // 判断用户是否已经看过欢迎界面
+        if (!preferences.getBoolean("is_first_time", false)) {
+            // 如果是第一次进入app，显示欢迎界面，并将is_first_time设置为true
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putBoolean("is_first_time", true);
+            editor.apply();
+
+            // 加载布局文件
+            View welcomeView = getLayoutInflater().inflate(R.layout.adapter_welcome, null);
+
+            // 创建AlertDialog.Builder对象
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+            // 设置弹窗标题、按钮和自定义布局
+            builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+
+                public void onClick(DialogInterface dialog, int which) {
+                    // 用户点击确定按钮后，关闭弹窗
+                    dialog.dismiss();
+                }
+            });
+            builder.setView(welcomeView);
+
+            // 创建并显示弹窗
+            builder.create().show();
+        }
+    }
+
+    private static final String PREF_NAME = "MyAppPref";
+    private static final String VERSION_CODE = "VersionCode";
+    private static final String ZIP_FILE_NAME = "localApi.zip";
+    private static final String TARGET_DIR = Environment.getExternalStorageDirectory().getPath() + "/zhuzhuyingwo/";
+
+    private void requestExternalStoragePermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+        } else {
+            loadApiFile();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == 1) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                loadApiFile();
+            } else {
+                // 权限被拒绝，显示提示信息
+                Toast.makeText(this, "请赋予应用存储权限后使用", Toast.LENGTH_SHORT).show();
+                // 退出应用
+                finish();
+            }
+        }
+    }
+
+    public void loadApiFile() {
+
+        SharedPreferences preferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        int savedVersionCode = preferences.getInt(VERSION_CODE, -1);
+        int currentVersionCode = BuildConfig.VERSION_CODE;
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestExternalStoragePermission();
+            return;
+        }
+
+        if (savedVersionCode < currentVersionCode) {
+            File targetDir = new File(TARGET_DIR);
+            if (!targetDir.exists()) {
+                targetDir.mkdirs();
+            }
+
+            try {
+                InputStream inputStream = getAssets().open(ZIP_FILE_NAME);
+                ZipInputStream zipInputStream = new ZipInputStream(inputStream);
+                ZipEntry zipEntry = null;
+
+                while ((zipEntry = zipInputStream.getNextEntry()) != null) {
+                    String fileName = zipEntry.getName();
+                    File targetFile = new File(TARGET_DIR + fileName);
+                    if (zipEntry.isDirectory()) {
+                        targetFile.mkdirs();
+                    } else {
+                        // 处理压缩文件中的重复文件名，如果压缩文件中包含重复的文件名，则先删除原有文件再创建新文件。
+                        if (targetFile.exists() && !targetFile.delete()) {
+                            continue;
+                        }
+
+                        FileOutputStream outputStream = new FileOutputStream(targetFile);
+                        byte[] buffer = new byte[1024];
+                        int length;
+                        while ((length = zipInputStream.read(buffer)) > 0) {
+                            outputStream.write(buffer, 0, length);
+                        }
+                        outputStream.close();
+                    }
+                }
+                zipInputStream.close();
+                SharedPreferences.Editor editor = preferences.edit();
+                editor.putInt(VERSION_CODE, currentVersionCode);
+                editor.apply();
+            } catch (IOException e) {
+                Log.e("MainActivity", "Error unzip file", e);
+            }
+        } else {
+            Log.e("MainActivity", "same version,no unzip config");
+        }
+    }
+
+    private class LoadApiFileTask extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            if (ContextCompat.checkSelfPermission(HomeActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                requestExternalStoragePermission();
+            } else {
+                loadApiFile();
+            }
+            return null;
+        }
+    }
+    //end if
 }

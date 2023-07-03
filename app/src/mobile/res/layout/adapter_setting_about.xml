@@ -1,0 +1,55 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="32sp"
+            android:layout_height="32sp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_logo_big"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="欢迎使用猪猪影窝！"
+            android:textSize="24sp"
+            android:textColor="@color/violet" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:text="      本项目是基于FongMi/TV进行二次开发的免费影视APP，仅供个人学习使用，禁止用于任何商业用途。所有视频数据均来源于互联网，并非由本人原创或上传。我不参与视频数据的采集、上传或分享，并且无法对其中的内容进行监督或控制。请注意，根据法律法规，未经授权使用他人的视频数据可能涉及侵权行为，因此建议用户在遵守相关法律规定的前提下进行合法使用。对于任何因非法使用视频数据所导致的法律责任，本人概不承担任何责任。"
+        android:textSize="16sp"
+        android:textColor="@color/black" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="12dp"
+        android:text="      本项目版本发布地址：https://zhuzhuok.zeabur.app/article/tech-1。开源地址是：https://github.com/rubidzhu/TVB。"
+        android:textSize="16sp"
+        android:textColor="@color/black" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="12dp"
+        android:text="      如果您喜欢本项目，请点击下面的分享按钮分享APP给您朋友，感谢使用！"
+        android:textSize="16sp"
+        android:textColor="@color/black" />
+
+</LinearLayout>

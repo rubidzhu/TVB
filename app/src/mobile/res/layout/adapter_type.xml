@@ -10,4 +10,4 @@
     android:gravity="center"
     android:textColor="@color/white"
     android:textSize="14sp"
-    tools:text="電影" />
+    tools:text="電影/电视剧，类型选择" />

@@ -3,7 +3,6 @@ package com.fongmi.android.tv.player;
 import androidx.annotation.NonNull;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
-import androidx.media3.common.TrackSelectionOverride;
 import androidx.media3.common.util.Util;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.analytics.AnalyticsListener;
@@ -23,7 +22,6 @@ import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.Prefers;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.github.catvod.crawler.SpiderDebug;
-import com.google.common.collect.ImmutableList;
 
 import java.util.Formatter;
 import java.util.List;
@@ -33,7 +31,14 @@ import java.util.Map;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.ui.IjkVideoView;
 
-public class Players implements Player.Listener, IMediaPlayer.OnInfoListener, IMediaPlayer.OnErrorListener, IMediaPlayer.OnPreparedListener, IMediaPlayer.OnCompletionListener, AnalyticsListener, ParseCallback {
+public class Players implements Player.Listener, IMediaPlayer.Listener, AnalyticsListener, ParseCallback {
+
+    public static final int SYS = 0;
+    public static final int IJK = 1;
+    public static final int EXO = 2;
+
+    public static final int SOFT = 0;
+    public static final int HARD = 1;
 
     private IjkVideoView ijkPlayer;
     private StringBuilder builder;
@@ -47,12 +52,20 @@ public class Players implements Player.Listener, IMediaPlayer.OnInfoListener, IM
     private int decode;
     private int player;
 
+    public static boolean isExo(int type) {
+        return type == EXO;
+    }
+
+    public static boolean isHard() {
+        return Prefers.getDecode() == HARD;
+    }
+
     public boolean isExo() {
-        return player == 0;
+        return player == EXO;
     }
 
     public boolean isIjk() {
-        return player == 1;
+        return player == SYS || player == IJK;
     }
 
     public Players init() {
@@ -81,12 +94,9 @@ public class Players implements Player.Listener, IMediaPlayer.OnInfoListener, IM
     }
 
     private void setupIjk(IjkVideoView view) {
-        ijkPlayer = view;
-        ijkPlayer.setDecode(decode);
-        ijkPlayer.setOnInfoListener(this);
-        ijkPlayer.setOnErrorListener(this);
-        ijkPlayer.setOnPreparedListener(this);
-        ijkPlayer.setOnCompletionListener(this);
+        ijkPlayer = view.render(Prefers.getRender()).decode(decode);
+        ijkPlayer.addListener(this);
+        ijkPlayer.setPlayer(player);
     }
 
     public ExoPlayer exo() {
@@ -194,11 +204,11 @@ public class Players implements Player.Listener, IMediaPlayer.OnInfoListener, IM
 
     public void togglePlayer() {
         stop();
-        setPlayer(player == 0 ? 1 : 0);
+        setPlayer(player == EXO ? SYS : ++player);
     }
 
     public void toggleDecode() {
-        setDecode(decode == 0 ? 1 : 0);
+        setDecode(decode == HARD ? SOFT : HARD);
         Prefers.putDecode(decode);
     }
 
@@ -310,7 +320,7 @@ public class Players implements Player.Listener, IMediaPlayer.OnInfoListener, IM
     }
 
     private void stopIjk() {
-        ijkPlayer.release();
+        ijkPlayer.stop();
     }
 
     private void releaseExo() {
@@ -331,16 +341,16 @@ public class Players implements Player.Listener, IMediaPlayer.OnInfoListener, IM
     }
 
     private void setMediaSource(Result result) {
-        SpiderDebug.log(errorCode + "," + result.getRealUrl() + "," + result.getHeaders());
-        if (isIjk()) ijkPlayer.setMediaSource(result.getRealUrl(), result.getHeaders());
+        SpiderDebug.log(errorCode + "," + result.getRealUrl());
+        if (isIjk()) ijkPlayer.setMediaSource(IjkUtil.getSource(result));
         if (isExo()) exoPlayer.setMediaSource(ExoUtil.getSource(result, errorCode));
         if (isExo()) exoPlayer.prepare();
         setTimeoutCheck(result.getRealUrl());
     }
 
     private void setMediaSource(Map<String, String> headers, String url) {
-        SpiderDebug.log(errorCode + "," + url + "," + headers);
-        if (isIjk()) ijkPlayer.setMediaSource(url, headers);
+        SpiderDebug.log(errorCode + "," + url);
+        if (isIjk()) ijkPlayer.setMediaSource(IjkUtil.getSource(headers, url));
         if (isExo()) exoPlayer.setMediaSource(ExoUtil.getSource(headers, url, errorCode));
         if (isExo()) exoPlayer.prepare();
         setTimeoutCheck(url);
@@ -362,9 +372,9 @@ public class Players implements Player.Listener, IMediaPlayer.OnInfoListener, IM
 
     private void setTrackExo(Track item) {
         if (item.isSelected()) {
-            exoPlayer.setTrackSelectionParameters(exoPlayer.getTrackSelectionParameters().buildUpon().setOverrideForType(new TrackSelectionOverride(exoPlayer.getCurrentTracks().getGroups().get(item.getGroup()).getMediaTrackGroup(), item.getTrack())).build());
+            ExoUtil.selectTrack(exoPlayer, item.getGroup(), item.getTrack());
         } else {
-            exoPlayer.setTrackSelectionParameters(exoPlayer.getTrackSelectionParameters().buildUpon().setOverrideForType(new TrackSelectionOverride(exoPlayer.getCurrentTracks().getGroups().get(item.getGroup()).getMediaTrackGroup(), ImmutableList.of())).build());
+            ExoUtil.deselectTrack(exoPlayer, item.getGroup(), item.getTrack());
         }
     }
 
@@ -390,7 +400,7 @@ public class Players implements Player.Listener, IMediaPlayer.OnInfoListener, IM
     @Override
     public void onPlayerError(@NonNull PlaybackException error) {
         this.errorCode = error.errorCode;
-        ErrorEvent.format();
+        ErrorEvent.format(true);
     }
 
     @Override
@@ -408,24 +418,22 @@ public class Players implements Player.Listener, IMediaPlayer.OnInfoListener, IM
     }
 
     @Override
-    public boolean onInfo(IMediaPlayer mp, int what, int extra) {
+    public void onInfo(IMediaPlayer mp, int what, int extra) {
         switch (what) {
             case IMediaPlayer.MEDIA_INFO_BUFFERING_START:
                 PlayerEvent.state(Player.STATE_BUFFERING);
-                return true;
+                break;
             case IMediaPlayer.MEDIA_INFO_BUFFERING_END:
             case IMediaPlayer.MEDIA_INFO_VIDEO_SEEK_RENDERING_START:
             case IMediaPlayer.MEDIA_INFO_AUDIO_SEEK_RENDERING_START:
                 PlayerEvent.ready();
-                return true;
-            default:
-                return true;
+                break;
         }
     }
 
     @Override
     public boolean onError(IMediaPlayer mp, int what, int extra) {
-        ErrorEvent.format();
+        ErrorEvent.format(false);
         return true;
     }
 

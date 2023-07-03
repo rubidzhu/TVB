@@ -13,6 +13,7 @@ import com.fongmi.android.tv.impl.SiteCallback;
 import com.fongmi.android.tv.ui.adapter.SiteAdapter;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.fongmi.android.tv.R; //jim add
 
 public class SiteDialog implements SiteAdapter.OnClickListener {
 
@@ -72,6 +73,7 @@ public class SiteDialog implements SiteAdapter.OnClickListener {
         binding.recycler.setHasFixedSize(true);
         binding.recycler.addItemDecoration(new SpaceItemDecoration(1, 8));
         binding.recycler.scrollToPosition(ApiConfig.getHomeIndex());
+        dialog.setTitle(R.string.dia_source);	//jim add
     }
 
     private void setDialog() {

@@ -8,12 +8,13 @@ import android.view.View;
 import androidx.appcompat.app.AlertDialog;
 
 import com.fongmi.android.tv.databinding.DialogUpdateBinding;
-import com.fongmi.android.tv.net.Download;
-import com.fongmi.android.tv.net.OkHttp;
+import com.fongmi.android.tv.utils.Download;
 import com.fongmi.android.tv.utils.FileUtil;
+import com.fongmi.android.tv.utils.Github;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.Prefers;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.github.catvod.net.OkHttp;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.json.JSONObject;
@@ -40,11 +41,11 @@ public class Updater implements Download.Callback {
     }
 
     private String getJson() {
-        return Github.get().getBranchPath(branch, "/release/" + BuildConfig.FLAVOR_mode + "-" + branch + ".json");
+        return Github.get().getBranchPath(branch, "/release/" + BuildConfig.FLAVOR_mode + ".json");
     }
 
     private String getApk() {
-        return Github.get().getBranchPath(branch, "/release/" + BuildConfig.FLAVOR_mode + "-" + BuildConfig.FLAVOR_api + ".apk");
+        return Github.get().getBranchPath(branch, "/release/" + BuildConfig.FLAVOR_mode + "-" + BuildConfig.FLAVOR_api + "-" + BuildConfig.FLAVOR_abi + ".apk");
     }
 
     private Updater() {
@@ -54,6 +55,11 @@ public class Updater implements Download.Callback {
     public Updater force() {
         Notify.show(R.string.update_check);
         Prefers.putUpdate(true);
+        return this;
+    }
+
+    public Updater release() {
+        this.branch = Github.RELEASE;
         return this;
     }
 
@@ -72,7 +78,7 @@ public class Updater implements Download.Callback {
     }
 
     private boolean need(int code, String name) {
-        return (branch.equals(Github.DEV) ? !name.equals(BuildConfig.VERSION_NAME) : code > BuildConfig.VERSION_CODE) && Prefers.getUpdate();
+        return Prefers.getUpdate() && (branch.equals(Github.DEV) ? !name.equals(BuildConfig.VERSION_NAME) && code >= BuildConfig.VERSION_CODE : code > BuildConfig.VERSION_CODE);
     }
 
     private void doInBackground() {

@@ -7,10 +7,12 @@ import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Depot;
 import com.fongmi.android.tv.bean.Parse;
+import com.fongmi.android.tv.bean.Rule;
 import com.fongmi.android.tv.bean.Site;
-import com.fongmi.android.tv.net.Callback;
+import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.utils.Json;
 import com.fongmi.android.tv.utils.Utils;
+import com.github.catvod.bean.Doh;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderNull;
 import com.google.gson.JsonElement;
@@ -28,6 +30,8 @@ import java.util.Map;
 
 public class ApiConfig {
 
+    private List<Doh> doh;
+    private List<Rule> rules;
     private List<Site> sites;
     private List<Parse> parses;
     private List<String> flags;
@@ -76,12 +80,18 @@ public class ApiConfig {
         return get().getParses().size() > 0;
     }
 
+    public static void load(Config config, Callback callback) {
+        get().clear().config(config).load(callback);
+    }
+
     public ApiConfig init() {
         this.ads = null;
         this.wall = null;
         this.home = null;
         this.parse = null;
         this.config = Config.vod();
+        this.doh = new ArrayList<>();
+        this.rules = new ArrayList<>();
         this.sites = new ArrayList<>();
         this.flags = new ArrayList<>();
         this.parses = new ArrayList<>();
@@ -101,6 +111,8 @@ public class ApiConfig {
         this.wall = null;
         this.home = null;
         this.parse = null;
+        this.doh.clear();
+        this.rules.clear();
         this.sites.clear();
         this.flags.clear();
         this.parses.clear();
@@ -180,8 +192,11 @@ public class ApiConfig {
     }
 
     private void initLive(JsonObject object) {
-        boolean load = object.has("lives") && LiveConfig.get().isSame(config.getUrl());
-        if (load) LiveConfig.get().clear().config(Config.find(config, 1).update()).parse(object);
+        Config temp = null;
+        boolean live = object.has("lives");
+        boolean same = LiveConfig.get().isSame(config.getUrl());
+        if (live) temp = Config.find(config, 1).update();
+        if (live && same) LiveConfig.get().clear().config(temp).parse(object);
         else LiveConfig.get().load();
     }
 
@@ -197,6 +212,8 @@ public class ApiConfig {
         if (parses.size() > 0) parses.add(0, Parse.god());
         if (home == null) setHome(sites.isEmpty() ? new Site() : sites.get(0));
         if (parse == null) setParse(parses.isEmpty() ? new Parse() : parses.get(0));
+        setRules(Rule.arrayFrom(object.getAsJsonArray("rules")));
+        setDoh(Doh.arrayFrom(object.getAsJsonArray("doh")));
         setFlags(Json.safeListString(object, "flags"));
         setWall(Json.safeString(object, "wallpaper"));
         setAds(Json.safeListString(object, "ads"));
@@ -246,14 +263,23 @@ public class ApiConfig {
         return jarLoader.jsonExtMix(flag, key, name, jxs, url);
     }
 
-    public Site getSite(String key) {
-        int index = getSites().indexOf(Site.get(key));
-        return index == -1 ? new Site() : getSites().get(index);
+    public List<Doh> getDoh() {
+        List<Doh> items = Doh.get(App.get());
+        items.removeAll(doh);
+        items.addAll(doh);
+        return items;
     }
 
-    public Parse getParse(String name) {
-        int index = getParses().indexOf(Parse.get(name));
-        return index == -1 ? null : getParses().get(index);
+    public void setDoh(List<Doh> doh) {
+        this.doh = doh;
+    }
+
+    public List<Rule> getRules() {
+        return rules == null ? Collections.emptyList() : rules;
+    }
+
+    public void setRules(List<Rule> rules) {
+        this.rules = rules;
     }
 
     public List<Site> getSites() {
@@ -297,18 +323,33 @@ public class ApiConfig {
         return config == null ? Config.vod() : config;
     }
 
-    public String getWall() {
-        return TextUtils.isEmpty(wall) ? "" : wall;
-    }
-
-    private void setWall(String wall) {
-        this.wall = wall;
-        boolean load = !TextUtils.isEmpty(wall) && WallConfig.get().isSame(wall);
-        if (load) WallConfig.get().config(Config.find(wall, config.getName(), 2).update());
+    public Parse getParse() {
+        return parse == null ? new Parse() : parse;
     }
 
     public Site getHome() {
         return home == null ? new Site() : home;
+    }
+
+    public String getWall() {
+        return TextUtils.isEmpty(wall) ? "" : wall;
+    }
+
+    public Parse getParse(String name) {
+        int index = getParses().indexOf(Parse.get(name));
+        return index == -1 ? null : getParses().get(index);
+    }
+
+    public Site getSite(String key) {
+        int index = getSites().indexOf(Site.get(key));
+        return index == -1 ? new Site() : getSites().get(index);
+    }
+
+    public void setParse(Parse parse) {
+        this.parse = parse;
+        this.parse.setActivated(true);
+        config.parse(parse.getName()).update();
+        for (Parse item : getParses()) item.setActivated(parse);
     }
 
     public void setHome(Site home) {
@@ -318,14 +359,9 @@ public class ApiConfig {
         for (Site item : getSites()) item.setActivated(home);
     }
 
-    public Parse getParse() {
-        return parse == null ? new Parse() : parse;
-    }
-
-    public void setParse(Parse parse) {
-        this.parse = parse;
-        this.parse.setActivated(true);
-        config.parse(parse.getName()).update();
-        for (Parse item : getParses()) item.setActivated(parse);
+    private void setWall(String wall) {
+        this.wall = wall;
+        boolean load = !TextUtils.isEmpty(wall) && WallConfig.get().isSame(wall);
+        if (load) WallConfig.get().config(Config.find(wall, config.getName(), 2).update());
     }
 }

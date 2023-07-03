@@ -7,12 +7,17 @@ import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
+import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.ApiConfig;
 import com.fongmi.android.tv.db.AppDatabase;
+import com.fongmi.android.tv.event.RefreshEvent;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
+import com.google.gson.reflect.TypeToken;
 
+import java.lang.reflect.Type;
+import java.util.Collections;
 import java.util.List;
 
 @Entity
@@ -57,6 +62,12 @@ public class History {
 
     public static History objectFrom(String str) {
         return new Gson().fromJson(str, History.class);
+    }
+
+    public static List<History> arrayFrom(String str) {
+        Type listType = new TypeToken<List<History>>() {}.getType();
+        List<History> items = new Gson().fromJson(str, listType);
+        return items == null ? Collections.emptyList() : items;
     }
 
     public History() {
@@ -235,7 +246,11 @@ public class History {
     }
 
     public static List<History> get() {
-        return AppDatabase.get().getHistoryDao().find(ApiConfig.getCid());
+        return get(ApiConfig.getCid());
+    }
+
+    public static List<History> get(int cid) {
+        return AppDatabase.get().getHistoryDao().find(cid);
     }
 
     public static History find(String key) {
@@ -246,15 +261,16 @@ public class History {
         AppDatabase.get().getHistoryDao().delete(cid);
     }
 
-    private void checkOpEd(History item) {
+    private void checkParam(History item) {
         if (getOpening() == 0) setOpening(item.getOpening());
         if (getEnding() == 0) setEnding(item.getEnding());
+        if (getSpeed() == 1) setSpeed(item.getSpeed());
     }
 
-    private void checkMerge(List<History> items) {
+    private void merge(List<History> items, boolean force) {
         for (History item : items) {
-            if (getKey().equals(item.getKey()) || Math.abs(item.getDuration() - getDuration()) > 10 * 60 * 1000) continue;
-            checkOpEd(item);
+            if (!force && (getKey().equals(item.getKey()) || Math.abs(item.getDuration() - getDuration()) > 10 * 60 * 1000)) continue;
+            checkParam(item);
             item.delete();
         }
     }
@@ -262,30 +278,39 @@ public class History {
     public void update(long position, long duration) {
         setPosition(position);
         setDuration(duration);
-        update();
+        merge(find(), false);
+        save();
     }
 
     public History update(int cid) {
-        setCid(cid);
-        update();
-        return this;
+        return update(cid, find());
     }
 
-    public History update() {
-        checkMerge(AppDatabase.get().getHistoryDao().findByName(ApiConfig.getCid(), getVodName()));
+    public History update(int cid, List<History> items) {
+        setCid(cid);
+        merge(items, true);
+        return save();
+    }
+
+    public History save() {
         AppDatabase.get().getHistoryDao().insertOrUpdate(this);
         return this;
     }
 
     public History delete() {
         AppDatabase.get().getHistoryDao().delete(ApiConfig.getCid(), getKey());
+        AppDatabase.get().getTrackDao().delete(getKey());
         return this;
+    }
+
+    public List<History> find() {
+        return AppDatabase.get().getHistoryDao().findByName(ApiConfig.getCid(), getVodName());
     }
 
     public void findEpisode(List<Vod.Flag> flags) {
         setVodFlag(flags.get(0).getFlag());
         setVodRemarks(flags.get(0).getEpisodes().get(0).getName());
-        for (History item : AppDatabase.get().getHistoryDao().findByName(ApiConfig.getCid(), getVodName())) {
+        for (History item : find()) {
             if (getPosition() > 0) break;
             for (Vod.Flag flag : flags) {
                 Vod.Flag.Episode episode = flag.find(item.getVodRemarks());
@@ -293,10 +318,33 @@ public class History {
                 setVodFlag(flag.getFlag());
                 setPosition(item.getPosition());
                 setVodRemarks(episode.getName());
-                checkOpEd(item);
+                checkParam(item);
                 break;
             }
         }
+    }
+
+    private static void startSync(List<History> targets) {
+        for (History target : targets) {
+            List<History> items = target.find();
+            if (items.isEmpty()) {
+                target.update(ApiConfig.getCid(), items);
+                continue;
+            }
+            for (History item : items) {
+                if (target.getCreateTime() > item.getCreateTime()) {
+                    target.update(ApiConfig.getCid(), items);
+                    break;
+                }
+            }
+        }
+    }
+
+    public static void sync(List<History> targets) {
+        App.execute(() -> {
+            startSync(targets);
+            RefreshEvent.history();
+        });
     }
 
     @NonNull

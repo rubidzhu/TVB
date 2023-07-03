@@ -4,4 +4,11 @@
     <color name="primaryDark">@color/black</color>
     <color name="accent">@color/blue_500</color>
 
+    //bellow add by jim
+    <color name="violet">#C25FFF</color>
+    <color name="black_bot">#333333</color>
+    <color name="grep_bot">#7A7E89</color>
+    <color name="grep_item">#262a3480</color> //半透明0.5
+    <color name="blue_sel">#4643DF</color>
+
 </resources>

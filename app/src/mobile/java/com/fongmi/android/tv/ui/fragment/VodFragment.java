@@ -24,24 +24,25 @@ import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.databinding.FragmentVodBinding;
 import com.fongmi.android.tv.event.CastEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
+import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.impl.FilterCallback;
 import com.fongmi.android.tv.impl.SiteCallback;
 import com.fongmi.android.tv.model.SiteViewModel;
-import com.fongmi.android.tv.net.Callback;
-import com.fongmi.android.tv.net.OkHttp;
 import com.fongmi.android.tv.ui.activity.CollectActivity;
 import com.fongmi.android.tv.ui.activity.DetailActivity;
 import com.fongmi.android.tv.ui.activity.HistoryActivity;
 import com.fongmi.android.tv.ui.activity.KeepActivity;
 import com.fongmi.android.tv.ui.adapter.TypeAdapter;
 import com.fongmi.android.tv.ui.base.BaseFragment;
-import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.ui.custom.dialog.FilterDialog;
 import com.fongmi.android.tv.ui.custom.dialog.LinkDialog;
 import com.fongmi.android.tv.ui.custom.dialog.ReceiveDialog;
 import com.fongmi.android.tv.ui.custom.dialog.SiteDialog;
+import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.Prefers;
 import com.fongmi.android.tv.utils.Trans;
+import com.github.catvod.net.OkHttp;
+import com.google.common.net.HttpHeaders;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -53,7 +54,16 @@ import java.util.List;
 import java.util.Random;
 
 import okhttp3.Call;
+import okhttp3.Headers;
 import okhttp3.Response;
+
+//below add by jim
+import com.fongmi.android.tv.ui.fragment.SettingFragment;
+import com.fongmi.android.tv.utils.ResUtil;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
+import com.fongmi.android.tv.R;
+//end if
 
 public class VodFragment extends BaseFragment implements SiteCallback, FilterCallback, TypeAdapter.OnClickListener {
 
@@ -89,14 +99,15 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
         showProgress();
         initHot();
         getHot();
+        onResume(); //jim add
     }
 
     @Override
     protected void initEvent() {
         mBinding.hot.setOnClickListener(this::onHot);
-        mBinding.link.setOnClickListener(this::onLink);
+        //mBinding.link.setOnClickListener(this::onLink); jim edit
         mBinding.logo.setOnClickListener(this::onLogo);
-        mBinding.keep.setOnClickListener(this::onKeep);
+        //mBinding.keep.setOnClickListener(this::onKeep);
         mBinding.retry.setOnClickListener(this::onRetry);
         mBinding.filter.setOnClickListener(this::onFilter);
         mBinding.search.setOnClickListener(this::onSearch);
@@ -129,7 +140,7 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
     }
 
     private void getHot() {
-        OkHttp.newCall("https://api.web.360kan.com/v1/rank?cat=1").enqueue(new Callback() {
+        OkHttp.newCall("https://api.web.360kan.com/v1/rank?cat=1", Headers.of(HttpHeaders.REFERER, "https://www.360kan.com/rank/general")).enqueue(new Callback() {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 mHots = Hot.get(response.body().string());
@@ -161,13 +172,13 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
 
     private void setFabVisible(int position) {
         if (mAdapter.getItemCount() == 0) {
-            mBinding.link.setVisibility(View.GONE);
+            //mBinding.link.setVisibility(View.GONE);   jim add
             mBinding.filter.setVisibility(View.GONE);
         } else if (mAdapter.get(position).getFilters().size() > 0) {
-            mBinding.link.setVisibility(View.GONE);
+            //mBinding.link.setVisibility(View.GONE);   jim add
             mBinding.filter.show();
         } else if (position == 0) {
-            mBinding.link.show();
+            //mBinding.link.show(); jim add
             mBinding.filter.setVisibility(View.GONE);
         }
     }
@@ -178,7 +189,7 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
 
     private void onLink(View view) {
         if (ApiConfig.hasPush()) LinkDialog.create(this).show();
-        else mBinding.link.hide();
+        //else mBinding.link.hide();	jim add
     }
 
     private void onLogo(View view) {
@@ -224,6 +235,7 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
         mAdapter.clear();
         mViewModel.homeContent();
         mBinding.pager.setAdapter(new PageAdapter(getChildFragmentManager()));
+        updateSite();   //jim add
     }
 
     public Result getResult() {
@@ -300,7 +312,7 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
         @Override
         public Fragment getItem(int position) {
             Class type = mAdapter.get(position);
-            return TypeFragment.newInstance(type.getTypeId(), type.getTypeFlag().equals("1"));
+            return TypeFragment.newInstance(getSite().getKey(), type.getTypeId(), type.getTypeFlag().equals("1"));
         }
 
         @Override
@@ -312,4 +324,44 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
         public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
         }
     }
+
+
+
+    //bellow add by jim
+    private String getHomeValueFromSharedPreferences() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+        return prefs.getString("home_value", "");
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateSite();
+    }
+
+    private void updateSite() {
+        String homeSite = ApiConfig.get().getHome().getName();
+        String homeHist = getHomeValueFromSharedPreferences();
+        String curSite = homeSite;
+        if (homeSite.isEmpty()){
+            if (homeHist.isEmpty() ){
+                curSite = getString(R.string.app_name);;
+            } else {
+                curSite = homeHist;
+            }
+        } else {
+            curSite = homeSite;
+        }
+        mBinding.nowsite.setText(curSite);
+
+        // 获取SharedPreferences对象
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+        // 获取SharedPreferences编辑器
+        SharedPreferences.Editor editor = prefs.edit();
+        // 存储home的值
+        editor.putString("home_value", curSite);
+        // 应用更改
+        editor.apply();
+    }
+    //end if
 }

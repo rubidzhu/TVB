@@ -1,6 +1,7 @@
 package com.fongmi.android.tv.ui.custom.dialog;
 
 import android.content.DialogInterface;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
@@ -18,6 +19,8 @@ import com.fongmi.android.tv.impl.ConfigCallback;
 import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.Utils;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.fongmi.android.tv.utils.ResUtil; //jim add
+
 
 public class ConfigDialog {
 
@@ -50,7 +53,16 @@ public class ConfigDialog {
     }
 
     private void initDialog() {
-        dialog = new MaterialAlertDialogBuilder(binding.getRoot().getContext()).setTitle(type == 0 ? R.string.setting_vod : type == 1 ? R.string.setting_live : R.string.setting_wall).setView(binding.getRoot()).setPositiveButton(R.string.dialog_positive, this::onPositive).setNegativeButton(R.string.dialog_negative, this::onNegative).create();
+        final String[] context = ResUtil.getStringArray(R.array.url_text);
+        final String[] url = ResUtil.getStringArray(R.array.default_url);
+        dialog = new MaterialAlertDialogBuilder(binding.getRoot().getContext()).setTitle(type == 0 ? R.string.setting_vod : type == 1 ? R.string.setting_live : R.string.setting_wall).setView(binding.getRoot()).setPositiveButton(R.string.dialog_positive, this::onPositive).setNegativeButton(R.string.dialog_negative, this::onNegative)
+                .setSingleChoiceItems(context, -1, (dialog, which) -> {
+                    // 处理选中状态变化事件 jim add
+                    String text = Utils.checkClan(url[which]);
+                    callback.setConfig(Config.find(text, type));
+                    dialog.dismiss();
+                })
+                .create();
         dialog.getWindow().setDimAmount(0);
         dialog.show();
     }
@@ -58,6 +70,7 @@ public class ConfigDialog {
     private void initView() {
         binding.text.setText(url = getUrl());
         binding.input.setEndIconOnClickListener(this::onChoose);
+        binding.text.setSelection(TextUtils.isEmpty(url) ? 0 : url.length());
     }
 
     private void initEvent() {
@@ -95,4 +108,5 @@ public class ConfigDialog {
     private void onNegative(DialogInterface dialog, int which) {
         dialog.dismiss();
     }
+
 }

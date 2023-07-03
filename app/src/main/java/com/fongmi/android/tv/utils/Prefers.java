@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import androidx.preference.PreferenceManager;
 
 import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.player.Players;
 
 public class Prefers {
 
@@ -59,6 +60,14 @@ public class Prefers {
         }
     }
 
+    public static String getDoh() {
+        return getString("doh");
+    }
+
+    public static void putDoh(String doh) {
+        put("doh", doh);
+    }
+
     public static String getKeep() {
         return getString("keep");
     }
@@ -84,7 +93,7 @@ public class Prefers {
     }
 
     public static int getPlayer() {
-        return getInt("player", 0);
+        return getInt("player", Players.EXO);
     }
 
     public static void putPlayer(int player) {
@@ -100,7 +109,7 @@ public class Prefers {
     }
 
     public static int getDecode() {
-        return getInt("decode", 1);
+        return getInt("decode", Players.HARD);
     }
 
     public static void putDecode(int decode) {
@@ -195,7 +204,41 @@ public class Prefers {
         put("update", update);
     }
 
+    public static String getUa() {
+        return getString("ua", Sniffer.CHROME);
+    }
+
+    public static void putUa(String ua) {
+        put("ua", ua);
+    }
+
+    public static boolean isTunnel() {
+        return getBoolean("exo_tunnel");
+    }
+
+    public static void putTunnel(boolean tunnel) {
+        put("exo_tunnel", tunnel);
+    }
+
+    public static int getHttp() {
+        return getInt("exo_http");
+    }
+
+    public static void putHttp(int http) {
+        put("exo_http", http);
+    }
+
     public static float getThumbnail() {
         return 0.3f * getQuality() + 0.4f;
     }
+
+    //bellow add by jim
+    public static int getDownload() {
+        return getInt("download", 1);
+    }
+
+    public static void putDownload(int download) {
+        put("download", download);
+    }
+    //end if
 }

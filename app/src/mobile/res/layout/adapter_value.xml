@@ -6,7 +6,7 @@
     android:layout_height="wrap_content"
     android:layout_marginStart="4dp"
     android:layout_marginEnd="4dp"
-    android:background="@drawable/shape_accent"
+    android:background="@drawable/selector_accent_white"
     android:textColor="@color/control"
     android:textSize="14sp"
-    tools:text="全部" />
+    tools:text="全部 过滤的选择" />

@@ -8,4 +8,4 @@
     android:gravity="center"
     android:textColor="@color/text"
     android:textSize="14sp"
-    tools:text="泥巴" />
+    tools:text="泥巴 线路" />

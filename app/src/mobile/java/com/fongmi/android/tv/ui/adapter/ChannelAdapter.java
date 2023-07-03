@@ -29,6 +29,11 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         boolean onLongClick(Channel item);
     }
 
+    public void clear() {
+        mItems.clear();
+        notifyDataSetChanged();
+    }
+
     public void addAll(List<Channel> items) {
         mItems.clear();
         mItems.addAll(items);
@@ -42,12 +47,8 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         notifyItemRemoved(position);
     }
 
-    public int getPosition() {
-        for (int i = 0; i < mItems.size(); i++) if (mItems.get(i).isSelected()) return i;
-        return 0;
-    }
-
     public void setSelected(int position) {
+        if (position == -1) return;
         for (int i = 0; i < mItems.size(); i++) mItems.get(i).setSelected(i == position);
         notifyItemRangeChanged(0, getItemCount());
     }

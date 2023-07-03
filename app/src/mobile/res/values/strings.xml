@@ -19,11 +19,10 @@
     <string name="detail_content">Summary</string>
     <string name="detail_search">Searching <xliff:g name="name">%s</xliff:g></string>
 
-    <!-- Cast -->
-    <string name="cast_select">Select devices</string>
-    <string name="cast_device_empty">Could\'t find a device to cast</string>
-    <string name="cast_device_offline">Device is offline</string>
-    <string name="cast_scan">Please scan QR Code to bind</string>
+    <!-- Device -->
+    <string name="device_select">Select devices</string>
+    <string name="device_offline">Device is offline</string>
+    <string name="device_scan">Please scan QR Code to bind</string>
 
     <!-- Control -->
     <string name="control_speed">Speed</string>
@@ -35,4 +34,22 @@
     <string name="dialog_delete_keep">All keep records will be removed.</string>
     <string name="dialog_delete_history">All history records will be removed.</string>
 
+    //all add by jim
+    <string-array name="select_speed">
+        <item>0.75</item>
+        <item>1.0</item>
+        <item>1.25</item>
+        <item>1.5</item>
+        <item>2.0</item>
+        <item>2.5</item>
+        <item>3.0</item>
+    </string-array>
+
+    <string name="default_url">https://raw.iqiq.io/rubidzhu/boxxx/main/m.json </string>
+    <string name="detail_order">order</string>
+    <string name="detail_keep">keep</string>
+    <string name="detail_quicksearch">quicksearch</string>
+    <string name="control_reset">Reset</string>
+    <string name="dia_source">home site</string>
+    //end
 </resources>

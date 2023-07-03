@@ -88,6 +88,11 @@ public class ConfigDialog implements DialogInterface.OnDismissListener {
             if (actionId == EditorInfo.IME_ACTION_DONE) binding.positive.performClick();
             return true;
         });
+
+        //below add by jim ltv
+        binding.url1.setOnClickListener(this::onSetUrl1);
+        binding.url2.setOnClickListener(this::onSetUrl2);
+        //end if
     }
 
     private String getUrl() {
@@ -129,4 +134,24 @@ public class ConfigDialog implements DialogInterface.OnDismissListener {
     public void onDismiss(DialogInterface dialogInterface) {
         EventBus.getDefault().unregister(this);
     }
+
+    //below add by jim ltv
+    private void onSetUrl1(View view) {
+        // 获取 string-array 中的值
+        String[] options = ResUtil.getStringArray(R.array.default_url);
+        String text = Utils.checkClan(options[2]);
+        if (text.isEmpty()) Config.delete(url, type);
+        callback.setConfig(Config.find(text, type));
+        dialog.dismiss();
+    }
+
+    private void onSetUrl2(View view) {
+        // 获取 string-array 中的值
+        String[] options = ResUtil.getStringArray(R.array.default_url);
+        String text = Utils.checkClan(options[0]);
+        if (text.isEmpty()) Config.delete(url, type);
+        callback.setConfig(Config.find(text, type));
+        dialog.dismiss();
+    }
+    //end if
 }

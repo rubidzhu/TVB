@@ -15,6 +15,7 @@ import com.fongmi.android.tv.databinding.ActivityHistoryBinding;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.ui.adapter.HistoryAdapter;
 import com.fongmi.android.tv.ui.base.BaseActivity;
+import com.fongmi.android.tv.ui.custom.dialog.SyncDialog;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.greenrobot.eventbus.Subscribe;
@@ -42,7 +43,11 @@ public class HistoryActivity extends BaseActivity implements HistoryAdapter.OnCl
 
     @Override
     protected void initEvent() {
+        mBinding.sync.setOnClickListener(this::onSync);
         mBinding.delete.setOnClickListener(this::onDelete);
+        //jim add
+        mBinding.cancel.setOnClickListener(this::onCancel);
+        //end if
     }
 
     private void setRecyclerView() {
@@ -56,6 +61,12 @@ public class HistoryActivity extends BaseActivity implements HistoryAdapter.OnCl
     private void getHistory() {
         mAdapter.addAll(History.get());
         mBinding.delete.setVisibility(mAdapter.getItemCount() > 0 ? View.VISIBLE : View.GONE);
+        mBinding.cancel.setVisibility(mAdapter.getItemCount() > 0 ? View.VISIBLE : View.GONE);  //jim add
+		
+    }
+	
+	    private void onSync(View view) {
+        SyncDialog.create().history().show(this);
     }
 
     private void onDelete(View view) {
@@ -65,6 +76,7 @@ public class HistoryActivity extends BaseActivity implements HistoryAdapter.OnCl
             mAdapter.setDelete(true);
         } else {
             mBinding.delete.setVisibility(View.GONE);
+            mBinding.cancel.setVisibility(View.GONE);   //jim add
         }
     }
 
@@ -81,8 +93,13 @@ public class HistoryActivity extends BaseActivity implements HistoryAdapter.OnCl
     @Override
     public void onItemDelete(History item) {
         mAdapter.remove(item.delete());
-        if (mAdapter.getItemCount() > 0) return;
-        mBinding.delete.setVisibility(View.GONE);
+        //jim edit
+        if (mAdapter.getItemCount() > 0) {
+            return;
+        } else {
+            mBinding.delete.setVisibility(View.GONE);
+            mBinding.cancel.setVisibility(View.GONE);   //jim add
+        }
         mAdapter.setDelete(false);
     }
 
@@ -97,4 +114,10 @@ public class HistoryActivity extends BaseActivity implements HistoryAdapter.OnCl
         if (mAdapter.isDelete()) mAdapter.setDelete(false);
         else super.onBackPressed();
     }
+
+    //jim add
+    private void onCancel(View view) {
+        onBackPressed();
+    }
+    //end if
 }

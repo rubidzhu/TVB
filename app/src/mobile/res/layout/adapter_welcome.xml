@@ -1,0 +1,46 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="36sp"
+            android:layout_height="36sp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_logo_big"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="猪猪影窝欢迎您！"
+            android:textSize="24sp"
+            android:textColor="@color/violet" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:text="     首次使用APP，请您先到设置->点播网址中，选择默认网址或者输入您的接口网址。"
+        android:textSize="16sp"
+        android:textColor="@color/black" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="12dp"
+        android:text="     请注意，猪猪影窝仅供个人学习使用，禁止用于任何商业用途。"
+        android:textSize="16sp"
+        android:textColor="@color/black" />
+
+</LinearLayout>

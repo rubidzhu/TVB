@@ -74,6 +74,7 @@ public class SiteDialog implements SitePresenter.OnClickListener {
         params.height = (int) (ResUtil.getScreenHeight() * 0.738f);
         dialog.getWindow().setAttributes(params);
         dialog.getWindow().setDimAmount(0);
+        dialog.setTitle("请选择首页数据源网站");  //jim add
         dialog.show();
     }
 
