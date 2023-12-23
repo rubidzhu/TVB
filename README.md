@@ -4,31 +4,30 @@
 
 https://github.com/CatVodTVOfficial/CatVodTVJarLoader
 
-### 下載
-
-電視版  
-[Jar+Js](https://github.com/FongMi/TV/raw/release/release/leanback-java.apk "TV")  
-[Jar+Js+Py](https://github.com/FongMi/TV/raw/release/release/leanback-python.apk "TV")  
-[Android 4.1](https://github.com/FongMi/TV/raw/kitkat/release/leanback.apk "TV")
-
-手機版  
-[Jar+Js](https://github.com/FongMi/TV/raw/release/release/mobile-java.apk "TV")  
-[Jar+Js+Py](https://github.com/FongMi/TV/raw/release/release/mobile-python.apk "TV")
-
 ### 點播欄位
 
-<pre><code>searchable：搜索    (0：關閉、1：啟用)  
-filterable：篩選    (0：關閉、1：啟用)  
-changeable：換源    (0：關閉、1：啟用)
-playerType：播放器  (1：IJK、2：EXO)</code></pre>
+| 欄位名稱       | 預設值  | 說明   | 其他               |
+|------------|------|------|------------------|
+| searchable | 1    | 是否搜索 | 0：關閉；1：啟用        |
+| changeable | 1    | 是否換源 | 0：關閉；1：啟用        |
+| recordable | 1    | 是否紀錄 | 0：關閉；1：啟用        |
+| playerType | none | 播放器  | 0：系統；1：IJK；2：EXO |
+| timeout    | 15   | 播放超時 | 單位：秒             |
+| header     | none | 標頭   | 格式：json          |
 
 ### 直播欄位
 
-<pre><code>ua：用戶代理
-epg：節目網址
-logo：台標網址
-boot：是否自動開啟
-playerType：播放器</code></pre>
+| 欄位名稱       | 預設值   | 說明    | 其他               |
+|------------|-------|-------|------------------|
+| ua         | none  | 用戶代理  |                  |
+| referer    | none  | 參照地址  |                  |
+| epg        | none  | 節目地址  |                  |
+| logo       | none  | 台標地址  |                  |
+| pass       | false | 是否免密碼 |                  |
+| boot       | false | 是否自啟動 |                  |
+| playerType | none  | 播放器   | 0：系統；1：IJK；2：EXO |
+| timeout    | 15    | 播放超時  | 單位：秒             |
+| header     | none  | 標頭    | 格式：json          |
 
 ### 配置範例
 
@@ -36,3 +35,10 @@ playerType：播放器</code></pre>
 [點播-本地](other/sample/vod/offline.json)  
 [直播-線上](other/sample/live/online.json)  
 [直播-本地](other/sample/live/offline.json)
+
+### 飛機群
+
+[討論群組](https://t.me/fongmi_offical)  
+[發布頻道](https://t.me/fongmi_release)
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/E1E5OT2RJ)

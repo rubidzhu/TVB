@@ -30,8 +30,7 @@ def download_file(name, ext):
 
 
 def init_py(path, name, ext):
-    create_file(path)
-    py_name = path + name + '.py'
+    py_name = path + '/' + name + '.py'
     download_file(py_name, ext)
     return SourceFileLoader(name, py_name).load_module().Spider()
 
@@ -78,6 +77,11 @@ def searchContent(ru, key, quick):
     result = ru.searchContent(key, quick)
     formatJo = json.dumps(result, ensure_ascii=False)
     return formatJo
+
+
+def localProxy(ru, param):
+    result = ru.localProxy(str2json(param))
+    return result
 
 
 def run():

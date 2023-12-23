@@ -68,8 +68,14 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer implements MediaPlay
         if (ContentResolver.SCHEME_FILE.equals(scheme)) {
             setDataSource(uri.getPath());
         } else {
-            mMediaPlayer.setDataSource(context, uri, headers);
+            mMediaPlayer.setDataSource(context, uri, checkRange(headers));
         }
+    }
+
+    private Map<String, String> checkRange(Map<String, String> headers) {
+        if (headers.containsKey("Range")) return headers;
+        headers.put("Range", "bytes=0-");
+        return headers;
     }
 
     @Override
@@ -89,7 +95,7 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer implements MediaPlay
 
     @Override
     public void stop() throws IllegalStateException {
-        mMediaPlayer.stop();
+        if (mMediaPlayer.isPlaying()) mMediaPlayer.stop();
     }
 
     @Override
@@ -219,12 +225,25 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer implements MediaPlay
         return mMediaPlayer.getAudioSessionId();
     }
 
-    @Override
-    public int getSelectedTrack(int type) {
+    private int getTrack(int type) {
         try {
             return mMediaPlayer.getSelectedTrack(type);
         } catch (Exception e) {
-            return 0;
+            return -1;
+        }
+    }
+
+    @Override
+    public int getSelectedTrack(int type) {
+        switch (type) {
+            case ITrackInfo.MEDIA_TRACK_TYPE_VIDEO:
+                return getTrack(MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_VIDEO);
+            case ITrackInfo.MEDIA_TRACK_TYPE_AUDIO:
+                return getTrack(MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_AUDIO);
+            case ITrackInfo.MEDIA_TRACK_TYPE_TEXT:
+                return getTrack(MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT);
+            default:
+                return -1;
         }
     }
 
@@ -310,7 +329,7 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer implements MediaPlay
 
     @Override
     public void onTimedText(MediaPlayer mp, TimedText text) {
-        if (text != null) notifyOnTimedText(new IjkTimedText(text.getBounds(), text.getText()));
+        if (text != null) notifyOnTimedText(IjkTimedText.create(text.getText()));
     }
 
     @Override

@@ -21,7 +21,6 @@ package tv.danmaku.ijk.media.player;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
@@ -35,6 +34,8 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
+
+import com.google.common.net.HttpHeaders;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -56,7 +57,6 @@ import tv.danmaku.ijk.media.player.misc.IMediaDataSource;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 import tv.danmaku.ijk.media.player.misc.IjkTrackInfo;
 import tv.danmaku.ijk.media.player.pragma.DebugLog;
-import tv.danmaku.ijk.media.player.ui.Utils;
 
 /**
  * @author bbcallen
@@ -193,7 +193,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
             if (!mIsNativeInitialized) {
                 native_init();
                 native_setDot(0);
-                native_setLogLevel(IjkMediaPlayer.IJK_LOG_SILENT);
+                native_setLogLevel(IjkMediaPlayer.IJK_LOG_DEBUG);
                 mIsNativeInitialized = true;
             }
         }
@@ -351,17 +351,16 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
      * @throws IllegalStateException if it is called in an invalid state
      */
     public void setDataSource(String path, Map<String, String> headers) throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
-        for (String key : Arrays.asList(Utils.USER_AGENT, Utils.USER_AGENT.toLowerCase())) {
+        for (String key : Arrays.asList(HttpHeaders.USER_AGENT, HttpHeaders.USER_AGENT.toLowerCase())) {
             if (!headers.containsKey(key)) continue;
             setOption(OPT_CATEGORY_FORMAT, "user_agent", headers.get(key));
             headers.remove(key);
         }
         StringBuilder sb = new StringBuilder();
         for (Map.Entry<String, String> entry : headers.entrySet()) {
-            sb.append(entry.getKey());
-            sb.append(":");
             String value = entry.getValue();
-            if (!TextUtils.isEmpty(value)) sb.append(entry.getValue());
+            sb.append(entry.getKey()).append(":");
+            if (!TextUtils.isEmpty(value)) sb.append(value);
             sb.append("\r\n");
             setOption(OPT_CATEGORY_FORMAT, "headers", sb.toString());
         }
@@ -455,8 +454,8 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     }
 
     @Override
-    public int getSelectedTrack(int trackType) {
-        switch (trackType) {
+    public int getSelectedTrack(int type) {
+        switch (type) {
             case ITrackInfo.MEDIA_TRACK_TYPE_VIDEO:
                 return (int) _getPropertyLong(FFP_PROP_INT64_SELECTED_VIDEO_STREAM, -1);
             case ITrackInfo.MEDIA_TRACK_TYPE_AUDIO:
@@ -820,12 +819,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                     player.notifyOnInfo(msg.arg1, msg.arg2);
                     return;
                 case MEDIA_TIMED_TEXT:
-                    if (msg.obj == null) {
-                        player.notifyOnTimedText(null);
-                    } else {
-                        IjkTimedText text = new IjkTimedText(new Rect(0, 0, 1, 1), (String) msg.obj);
-                        player.notifyOnTimedText(text);
-                    }
+                    player.notifyOnTimedText(IjkTimedText.create((msg.arg1 >= 2 || msg.obj == null) ? "" : msg.obj.toString()));
                     return;
                 case MEDIA_NOP: // interface test message - ignore
                     break;
