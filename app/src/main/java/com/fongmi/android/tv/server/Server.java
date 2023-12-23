@@ -5,6 +5,7 @@ import android.net.wifi.WifiManager;
 import android.text.format.Formatter;
 
 import com.fongmi.android.tv.App;
+import com.fongmi.quickjs.utils.Proxy;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -46,6 +47,7 @@ public class Server {
         do {
             try {
                 nano = new Nano(port);
+                Proxy.set(port);
                 nano.start();
                 break;
             } catch (Exception e) {
@@ -63,7 +65,7 @@ public class Server {
         }
     }
 
-    private String getIP() {
+    public String getIP() {
         try {
             WifiManager manager = (WifiManager) App.get().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
             int address = manager.getConnectionInfo().getIpAddress();

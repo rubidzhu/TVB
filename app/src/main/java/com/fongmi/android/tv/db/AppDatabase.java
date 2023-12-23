@@ -10,6 +10,7 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.Setting;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Device;
 import com.fongmi.android.tv.bean.History;
@@ -22,12 +23,11 @@ import com.fongmi.android.tv.db.dao.HistoryDao;
 import com.fongmi.android.tv.db.dao.KeepDao;
 import com.fongmi.android.tv.db.dao.SiteDao;
 import com.fongmi.android.tv.db.dao.TrackDao;
-import com.fongmi.android.tv.utils.Prefers;
 
 @Database(entities = {Keep.class, Site.class, Track.class, Config.class, Device.class, History.class}, version = AppDatabase.VERSION)
 public abstract class AppDatabase extends RoomDatabase {
 
-    public static final int VERSION = 24;
+    public static final int VERSION = 25;
     public static final String SYMBOL = "@@@";
 
     private static volatile AppDatabase instance;
@@ -52,6 +52,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 .addMigrations(MIGRATION_21_22)
                 .addMigrations(MIGRATION_22_23)
                 .addMigrations(MIGRATION_23_24)
+                .addMigrations(MIGRATION_24_25)
                 .allowMainThreadQueries()
                 .fallbackToDestructiveMigration()
                 .build();
@@ -155,8 +156,8 @@ public abstract class AppDatabase extends RoomDatabase {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
             database.execSQL("UPDATE History SET player = 2 WHERE player = 0");
-            if (Prefers.getLivePlayer() == 0) Prefers.putLivePlayer(2);
-            if (Prefers.getPlayer() == 0) Prefers.putPlayer(2);
+            if (Setting.getLivePlayer() == 0) Setting.putLivePlayer(2);
+            if (Setting.getPlayer() == 0) Setting.putPlayer(2);
         }
     };
 
@@ -164,6 +165,13 @@ public abstract class AppDatabase extends RoomDatabase {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
             database.execSQL("ALTER TABLE Track ADD COLUMN `adaptive` INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
+    static final Migration MIGRATION_24_25 = new Migration(24, 25) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE Site ADD COLUMN recordable INTEGER DEFAULT 1");
         }
     };
 }

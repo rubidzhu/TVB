@@ -28,8 +28,8 @@ import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.fragment.VodFragment;
 import com.fongmi.android.tv.ui.presenter.TypePresenter;
 import com.fongmi.android.tv.utils.ResUtil;
-import com.fongmi.android.tv.utils.Trans;
 import com.fongmi.android.tv.utils.Utils;
+import com.github.catvod.utils.Trans;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,7 +49,7 @@ public class VodActivity extends BaseActivity implements TypePresenter.OnClickLi
         if (result == null || result.getTypes().isEmpty()) return;
         Intent intent = new Intent(activity, VodActivity.class);
         intent.putExtra("key", key);
-        intent.putExtra("result", result.toString());
+        intent.putExtra("result", result);
         activity.startActivity(intent);
     }
 
@@ -57,8 +57,8 @@ public class VodActivity extends BaseActivity implements TypePresenter.OnClickLi
         return getIntent().getStringExtra("key");
     }
 
-    private String getResult() {
-        return getIntent().getStringExtra("result");
+    private Result getResult() {
+        return getIntent().getParcelableExtra("result");
     }
 
     private Site getSite() {
@@ -100,13 +100,13 @@ public class VodActivity extends BaseActivity implements TypePresenter.OnClickLi
     }
 
     private List<Class> getTypes(Result result) {
-        List<Class> types = new ArrayList<>();
-        for (String cate : getSite().getCategories()) for (Class type : result.getTypes()) if (Trans.s2t(cate).equals(type.getTypeName())) types.add(type);
-        return types;
+        List<Class> items = new ArrayList<>();
+        for (String cate : getSite().getCategories()) for (Class item : result.getTypes()) if (Trans.s2t(cate).equals(item.getTypeName())) items.add(item);
+        return items;
     }
 
     private void setTypes() {
-        Result result = Result.fromJson(getResult());
+        Result result = getResult();
         result.setTypes(getTypes(result));
         for (Class item : result.getTypes()) if (result.getFilters().containsKey(item.getTypeId())) item.setFilter(false);
         for (Class item : result.getTypes()) if (result.getFilters().containsKey(item.getTypeId())) item.setFilters(result.getFilters().get(item.getTypeId()));
@@ -138,6 +138,10 @@ public class VodActivity extends BaseActivity implements TypePresenter.OnClickLi
         mAdapter.notifyArrayItemRangeChanged(0, mAdapter.size());
     }
 
+    private VodFragment getFragment() {
+        return (VodFragment) mPageAdapter.instantiateItem(mBinding.pager, mBinding.pager.getCurrentItem());
+    }
+
     @Override
     public void onItemClick(Class item) {
         updateFilter(item);
@@ -162,10 +166,6 @@ public class VodActivity extends BaseActivity implements TypePresenter.OnClickLi
         else super.onBackPressed();
     }
 
-    private VodFragment getFragment() {
-        return (VodFragment) mPageAdapter.instantiateItem(mBinding.pager, mBinding.pager.getCurrentItem());
-    }
-
     class PageAdapter extends FragmentStatePagerAdapter {
 
         public PageAdapter(@NonNull FragmentManager fm) {
@@ -176,8 +176,7 @@ public class VodActivity extends BaseActivity implements TypePresenter.OnClickLi
         @Override
         public Fragment getItem(int position) {
             Class type = (Class) mAdapter.get(position);
-            String filter = App.gson().toJson(type.getFilters());
-            return VodFragment.newInstance(getKey(), type.getTypeId(), filter, type.getTypeFlag().equals("1"));
+            return VodFragment.newInstance(getKey(), type.getTypeId(), type.getFilters(), type.getExtend(), type.getTypeFlag().equals("1"));
         }
 
         @Override

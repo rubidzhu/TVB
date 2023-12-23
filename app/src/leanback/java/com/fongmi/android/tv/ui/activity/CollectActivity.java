@@ -29,7 +29,7 @@ import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.fragment.CollectFragment;
 import com.fongmi.android.tv.ui.presenter.CollectPresenter;
-import com.fongmi.android.tv.utils.PauseThreadPoolExecutor;
+import com.fongmi.android.tv.utils.PauseExecutor;
 import com.fongmi.android.tv.utils.ResUtil;
 
 import java.util.ArrayList;
@@ -39,11 +39,11 @@ import java.util.concurrent.TimeUnit;
 
 public class CollectActivity extends BaseActivity {
 
-    private PauseThreadPoolExecutor mExecutor;
     private ActivityCollectBinding mBinding;
     private ArrayObjectAdapter mAdapter;
     private SiteViewModel mViewModel;
     private PageAdapter mPageAdapter;
+    private PauseExecutor mExecutor;
     private List<Site> mSites;
     private View mOldView;
 
@@ -123,16 +123,22 @@ public class CollectActivity extends BaseActivity {
     private void search() {
         mAdapter.add(Collect.all());
         mPageAdapter.notifyDataSetChanged();
-        mExecutor = new PauseThreadPoolExecutor(Constant.THREAD_POOL, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        mExecutor = new PauseExecutor(Constant.THREAD_POOL, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         mBinding.result.setText(getString(R.string.collect_result, getKeyword()));
         for (Site site : mSites) mExecutor.execute(() -> search(site));
     }
 
     private void search(Site site) {
         try {
-            mViewModel.searchContent(site, getKeyword());
+            mViewModel.searchContent(site, getKeyword(), false);
         } catch (Throwable ignored) {
         }
+    }
+
+    private void stop() {
+        if (mExecutor == null) return;
+        mExecutor.shutdownNow();
+        mExecutor = null;
     }
 
     private void onChildSelected(@Nullable RecyclerView.ViewHolder child) {
@@ -177,7 +183,13 @@ public class CollectActivity extends BaseActivity {
     @Override
     public void onBackPressed() {
         super.onBackPressed();
-        if (mExecutor != null) mExecutor.shutdownNow();
+        stop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stop();
     }
 
     class PageAdapter extends FragmentStatePagerAdapter {
@@ -189,7 +201,7 @@ public class CollectActivity extends BaseActivity {
         @NonNull
         @Override
         public Fragment getItem(int position) {
-            return CollectFragment.newInstance(((Collect) mAdapter.get(position)).getList());
+            return CollectFragment.newInstance(getKeyword(), (Collect) mAdapter.get(position));
         }
 
         @Override

@@ -5,9 +5,10 @@ import android.text.TextUtils;
 import androidx.annotation.NonNull;
 
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.utils.Json;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.Utils;
+import com.github.catvod.utils.Json;
+import com.github.catvod.utils.Util;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.annotations.SerializedName;
@@ -79,7 +80,7 @@ public class Parse {
     }
 
     public String getUrl() {
-        return TextUtils.isEmpty(url) ? "" : Utils.checkProxy(url);
+        return TextUtils.isEmpty(url) ? "" : Utils.convert(url);
     }
 
     public void setUrl(String url) {
@@ -121,7 +122,7 @@ public class Parse {
     public String extUrl() {
         int index = getUrl().indexOf("?");
         if (getExt().isEmpty() || index == -1) return getUrl();
-        return getUrl().substring(0, index + 1) + "cat_ext=" + Utils.getBase64(getExt().toString()) + "&" + getUrl().substring(index + 1);
+        return getUrl().substring(0, index + 1) + "cat_ext=" + Util.base64(getExt().toString()) + "&" + getUrl().substring(index + 1);
     }
 
     public HashMap<String, String> mixMap() {

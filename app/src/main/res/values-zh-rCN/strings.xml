@@ -36,6 +36,7 @@
     <string name="play_next">下集</string>
     <string name="play_prev">上集</string>
     <string name="play_loop">循环</string>
+    <string name="play_change">换源</string>
     <string name="play_forward">→</string>
     <string name="play_backward">←</string>
     <string name="play_invert">反转</string>
@@ -56,6 +57,9 @@
     <string name="parse_god">超级解析</string>
     <string name="parse_from">解析来自：<xliff:g name="name">%s</xliff:g></string>
 
+    <!-- Push -->
+    <string name="push">推送</string>
+
     <!-- Setting -->
     <string name="setting_vod">点播配置：</string>
     <string name="setting_live">直播配置：</string>
@@ -64,6 +68,8 @@
     <string name="setting_player_ua">User-Agent</string>
     <string name="setting_player_http">连线方式</string>
     <string name="setting_player_tunnel">隧道模式</string>
+    <string name="setting_player_subtitle">字幕大小</string>
+    <string name="setting_player_flag">线路播放</string>
     <string name="setting_decode">解码方式</string>
     <string name="setting_render">渲染方式</string>
     <string name="setting_scale">缩放比例</string>
@@ -87,7 +93,6 @@
     <string name="dialog_negative">取消</string>
     <string name="dialog_config_hint">请输入接口…</string>
     <string name="dialog_config_url">请输入地址…</string>
-    <string name="dialog_history">历史配置网址</string>  //jim add
 
     <!-- Error -->
     <string name="error_config_get">配置取得失败</string>
@@ -127,9 +132,14 @@
         <item>EXO</item>
     </string-array>
 
-    <string-array name="select_player_http">
+    <string-array name="select_exo_http">
         <item>预设</item>
         <item>OkHttp</item>
+    </string-array>
+
+    <string-array name="select_flag">
+        <item>自动</item>
+        <item>手动</item>
     </string-array>
 
     <string-array name="select_quality">
@@ -159,21 +169,28 @@
     </string-array>
 
     //bellow add by jim
+    <string name="dialog_history">历史配置网址</string>
+
     <string-array name="url_text">
-        <item>自用精选网址-1(推荐)</item>
-        <item>自用备选网址-2</item>
-        <item>本地配置网址-3(载入快)</item>
+        <item>1-猪猪影窝在线配置</item>
+        <item>2-备用配置有离线视频播放</item>
+        <item>3-猪猪本地配置网址</item>
     </string-array>
 
     <string-array name="default_url">
+        <item>https://od.lk/d/MzRfMjMyNjE5NDVf/zhuzhu.txt</item>
         <item>https://ghproxy.com/https://raw.githubusercontent.com/rubidzhu/boxxx/dev/sim.json</item>
-        <item>https://ghproxy.com/https://raw.githubusercontent.com/zzjyy/gaozz/dev/zhuzhu222.json</item>
         <item>clan://localhost/zhuzhuyingwo/localApi/api.json</item>
     </string-array>
 
     <string-array name="select_download">
-        <item>内置下载</item>
+        <item>内置下载，暂不支持</item>
         <item>IDM+下载</item>
+    </string-array>
+
+    <string-array name="switch_array">
+        <item>显示</item>
+        <item>隐藏</item>
     </string-array>
     //end if
 </resources>

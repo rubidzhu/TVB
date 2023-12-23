@@ -16,17 +16,24 @@ import com.fongmi.android.tv.Updater;
 import com.fongmi.android.tv.api.ApiConfig;
 import com.fongmi.android.tv.api.LiveConfig;
 import com.fongmi.android.tv.api.WallConfig;
+import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.databinding.ActivityMainBinding;
 import com.fongmi.android.tv.event.RefreshEvent;
+import com.fongmi.android.tv.event.ServerEvent;
 import com.fongmi.android.tv.impl.Callback;
+import com.fongmi.android.tv.player.Source;
 import com.fongmi.android.tv.server.Server;
 import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.custom.FragmentStateManager;
 import com.fongmi.android.tv.ui.fragment.SettingFragment;
 import com.fongmi.android.tv.ui.fragment.SettingPlayerFragment;
 import com.fongmi.android.tv.ui.fragment.VodFragment;
+import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.Notify;
+import com.github.catvod.utils.Util;
 import com.google.android.material.navigation.NavigationBarView;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 //bellow add by jim
 import com.fongmi.android.tv.ui.fragment.KeepFragment;
@@ -49,6 +56,7 @@ import android.util.Log;
 import com.fongmi.android.tv.BuildConfig;
 import android.Manifest;
 import android.content.pm.PackageManager;
+import com.fongmi.android.tv.Setting;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.widget.Toast;
@@ -90,13 +98,15 @@ public class MainActivity extends BaseActivity implements NavigationBarView.OnIt
         task.execute();
     }
 
-
     private void checkAction(Intent intent) {
-        boolean push = ApiConfig.hasPush() && intent.getAction() != null;
-        if (push && intent.getAction().equals(Intent.ACTION_SEND) && intent.getType().equals("text/plain")) {
+        if (Intent.ACTION_SEND.equals(intent.getAction())) {
             DetailActivity.push(this, Uri.parse(intent.getStringExtra(Intent.EXTRA_TEXT)));
-        } else if (push && intent.getAction().equals(Intent.ACTION_VIEW) && intent.getData().getScheme() != null) {
-            DetailActivity.push(this, intent.getData());
+        } else if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
+            if ("text/plain".equals(intent.getType()) || Util.path(intent.getData()).endsWith(".m3u")) {
+                loadLive("file:/" + FileChooser.getPathFromUri(this, intent.getData()));
+            } else {
+                DetailActivity.push(this, intent.getData());
+            }
         }
     }
 
@@ -104,18 +114,19 @@ public class MainActivity extends BaseActivity implements NavigationBarView.OnIt
         mManager = new FragmentStateManager(mBinding.container, getSupportFragmentManager()) {
             @Override
             public Fragment getItem(int position) {
+                if (position == 0) return VodFragment.newInstance();
+                if (position == 1) return SettingFragment.newInstance();
+                if (position == 2) return SettingPlayerFragment.newInstance();
                 //bellow Jim add
-                if (position == 0) {
-                    return VodFragment.newInstance();
-                } else if (position == 1) {
-                    return SettingFragment.newInstance();
-                } else {
-                    return KeepFragment.newInstance();
-                }
+                if (position == 10) return KeepFragment.newInstance();
                 //end if
+                return null;
             }
         };
         if (savedInstanceState == null) mManager.change(0);
+
+        //bellow add by jim
+        setNavigation();
     }
 
     private void initConfig() {
@@ -134,24 +145,43 @@ public class MainActivity extends BaseActivity implements NavigationBarView.OnIt
             }
 
             @Override
-            public void error(int resId) {
+            public void error(String msg) {
                 RefreshEvent.config();
                 RefreshEvent.empty();
-                Notify.show(resId);
+                Notify.show(msg);
             }
         };
+    }
+
+    private void loadLive(String url) {
+        LiveConfig.load(Config.find(url, 1), new Callback() {
+            @Override
+            public void success() {
+                openLive();
+            }
+        });
     }
 
     private void setNavigation() {
         mBinding.navigation.getMenu().findItem(R.id.vod).setVisible(true);
         mBinding.navigation.getMenu().findItem(R.id.setting).setVisible(true);
-        mBinding.navigation.getMenu().findItem(R.id.live).setVisible(false);
+        //mBinding.navigation.getMenu().findItem(R.id.live).setVisible(LiveConfig.hasUrl());
+
+        //bellow add by jim
+        mBinding.navigation.getMenu().findItem(R.id.live).setVisible(liveSwitchStateCheck());
+        mBinding.navigation.getMenu().findItem(R.id.keepbot).setVisible(true);
+        //end if
+    }
+
+    private boolean openLive() {
+        LiveActivity.start(this);
+        return false;
     }
 
     private void setConfirm() {
         confirm = true;
         Notify.show(R.string.app_exit);
-        App.post(() -> confirm = false, 2000);
+        App.post(() -> confirm = false, 5000);
     }
 
     public void change(int position) {
@@ -162,7 +192,12 @@ public class MainActivity extends BaseActivity implements NavigationBarView.OnIt
     public void onRefreshEvent(RefreshEvent event) {
         super.onRefreshEvent(event);
         if (event.getType().equals(RefreshEvent.Type.CONFIG)) setNavigation();
-        mBinding.navigation.getMenu().findItem(R.id.keepbot).setVisible(true);     //jim add
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onServerEvent(ServerEvent event) {
+        if (event.getType() != ServerEvent.Type.PUSH) return;
+        DetailActivity.push(this, event.getText());
     }
 
     @Override
@@ -170,7 +205,11 @@ public class MainActivity extends BaseActivity implements NavigationBarView.OnIt
         if (mBinding.navigation.getSelectedItemId() == item.getItemId()) return false;
         if (item.getItemId() == R.id.vod) return mManager.change(0);
         if (item.getItemId() == R.id.setting) return mManager.change(1);
-        if (item.getItemId() == R.id.keepbot) return mManager.change(2);    //jim add
+        if (item.getItemId() == R.id.live) return openLive();
+
+        //bellow add by jim
+        if (item.getItemId() == R.id.keepbot) return mManager.change(10);    //jim add
+        //end if
         return false;
     }
 
@@ -200,6 +239,7 @@ public class MainActivity extends BaseActivity implements NavigationBarView.OnIt
         WallConfig.get().clear();
         LiveConfig.get().clear();
         ApiConfig.get().clear();
+        Source.get().exit();
         Server.get().stop();
     }
 
@@ -323,6 +363,17 @@ public class MainActivity extends BaseActivity implements NavigationBarView.OnIt
             Log.e("MainActivity", "same version,no unzip config");
         }
 
+    }
+
+    private boolean liveSwitchStateCheck()
+    {
+        boolean ret = false;
+
+        if (Setting.getLiveSwitch() == 0 && LiveConfig.hasUrl()) {
+            ret = true;
+        }
+
+        return ret;
     }
 
     private class LoadApiFileTask extends AsyncTask<Void, Void, Void> {

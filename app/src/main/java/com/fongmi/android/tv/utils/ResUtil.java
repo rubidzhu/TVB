@@ -38,11 +38,23 @@ public class ResUtil {
 
     public static boolean hasNavigationBar(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            //bellow edit by jim
+            //Display display = getWindowManager(context).getDefaultDisplay();
             Display display = getWindowManager(context).getDefaultDisplay();
             Point size = new Point();
             Point realSize = new Point();
             display.getSize(size);
-            display.getRealSize(realSize);
+            //display.getRealSize(realSize);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                display.getRealSize(realSize);
+            } else {
+                // 在较旧的Android版本中处理
+                realSize.x = display.getWidth();
+                realSize.y = display.getHeight();
+            }
+            //end if
+
             return realSize.x != size.x || realSize.y != size.y;
         } else {
             boolean menu = ViewConfiguration.get(context).hasPermanentMenuKey();

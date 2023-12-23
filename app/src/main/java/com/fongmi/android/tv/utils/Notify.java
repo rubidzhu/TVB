@@ -1,6 +1,9 @@
 package com.fongmi.android.tv.utils;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
+import android.os.Build;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.widget.Toast;
@@ -13,6 +16,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 public class Notify {
 
+    public static final String DEFAULT = "default";
     private AlertDialog mDialog;
     private Toast mToast;
 
@@ -24,6 +28,17 @@ public class Notify {
         return Loader.INSTANCE;
     }
 
+    public static void createChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationManager notifyMgr = (NotificationManager) App.get().getSystemService(Context.NOTIFICATION_SERVICE);
+        notifyMgr.createNotificationChannel(new NotificationChannel(DEFAULT, "預設", NotificationManager.IMPORTANCE_HIGH));
+    }
+
+    public static String getError(int resId, Throwable e) {
+        if (TextUtils.isEmpty(e.getMessage())) return ResUtil.getString(resId);
+        return ResUtil.getString(resId) + "\n" + e.getMessage();
+    }
+
     public static void show(int resId) {
         if (resId != 0) show(ResUtil.getString(resId));
     }
@@ -33,7 +48,8 @@ public class Notify {
     }
 
     public static void progress(Context context) {
-        dismiss(); get().create(context);
+        dismiss();
+        get().create(context);
     }
 
     public static void dismiss() {

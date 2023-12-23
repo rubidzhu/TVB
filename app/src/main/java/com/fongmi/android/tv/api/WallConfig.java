@@ -5,13 +5,15 @@ import android.text.TextUtils;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.Setting;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.utils.FileUtil;
 import com.fongmi.android.tv.utils.ImgUtil;
-import com.fongmi.android.tv.utils.Prefers;
+import com.fongmi.android.tv.utils.Notify;
 import com.github.catvod.net.OkHttp;
+import com.github.catvod.utils.Path;
 
 import java.io.File;
 import java.io.IOException;
@@ -83,16 +85,16 @@ public class WallConfig {
             else config(Config.find(ApiConfig.get().getWall(), 2));
             App.post(callback::success);
             config.update();
-        } catch (Exception e) {
-            App.post(() -> callback.error(R.string.error_config_parse));
+        } catch (Throwable e) {
+            App.post(() -> callback.error(Notify.getError(R.string.error_config_parse, e)));
             config(Config.find(ApiConfig.get().getWall(), 2));
             e.printStackTrace();
         }
     }
 
     private File write(File file) throws IOException {
-        if (getUrl().startsWith("file")) FileUtil.copy(FileUtil.getLocal(getUrl()), file);
-        else if (getUrl().startsWith("http")) FileUtil.write(file, ImgUtil.resize(OkHttp.newCall(getUrl()).execute().body().bytes()));
+        if (getUrl().startsWith("file")) Path.copy(Path.local(getUrl()), file);
+        else if (getUrl().startsWith("http")) Path.write(file, ImgUtil.resize(OkHttp.newCall(getUrl()).execute().body().bytes()));
         else file.delete();
         return file;
     }
@@ -102,7 +104,7 @@ public class WallConfig {
     }
 
     public static void refresh(int index) {
-        Prefers.putWall(index);
+        Setting.putWall(index);
         RefreshEvent.wall();
     }
 }

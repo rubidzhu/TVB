@@ -64,8 +64,8 @@ public class HistoryActivity extends BaseActivity implements HistoryAdapter.OnCl
         mBinding.cancel.setVisibility(mAdapter.getItemCount() > 0 ? View.VISIBLE : View.GONE);  //jim add
 		
     }
-	
-	    private void onSync(View view) {
+
+    private void onSync(View view) {
         SyncDialog.create().history().show(this);
     }
 
@@ -87,7 +87,7 @@ public class HistoryActivity extends BaseActivity implements HistoryAdapter.OnCl
 
     @Override
     public void onItemClick(History item) {
-        DetailActivity.start(this, item.getSiteKey(), item.getVodId(), item.getVodName());
+        DetailActivity.start(this, item.getSiteKey(), item.getVodId(), item.getVodName(), item.getVodPic());
     }
 
     @Override

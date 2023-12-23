@@ -10,11 +10,12 @@ import com.fongmi.android.tv.bean.Parse;
 import com.fongmi.android.tv.bean.Rule;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.impl.Callback;
-import com.fongmi.android.tv.utils.Json;
+import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.Utils;
 import com.github.catvod.bean.Doh;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderNull;
+import com.github.catvod.utils.Json;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -68,14 +69,6 @@ public class ApiConfig {
         return get().getSites().indexOf(get().getHome());
     }
 
-    public static String getSiteName(String key) {
-        return get().getSite(key).getName();
-    }
-
-    public static boolean hasPush() {
-        return get().getSite("push_agent") != null;
-    }
-
     public static boolean hasParse() {
         return get().getParses().size() > 0;
     }
@@ -123,30 +116,23 @@ public class ApiConfig {
     }
 
     public void load(Callback callback) {
-        load(false, callback);
-    }
-
-    public void load(boolean cache, Callback callback) {
-        new Thread(() -> {
-            if (cache) loadCache(callback);
-            else loadConfig(callback);
-        }).start();
+        new Thread(() -> loadConfig(callback)).start();
     }
 
     private void loadConfig(Callback callback) {
         try {
             checkJson(JsonParser.parseString(Decoder.getJson(config.getUrl())).getAsJsonObject(), callback);
-        } catch (Exception e) {
-            if (TextUtils.isEmpty(config.getUrl())) App.post(() -> callback.error(0));
-            else loadCache(callback);
+        } catch (Throwable e) {
+            if (TextUtils.isEmpty(config.getUrl())) App.post(() -> callback.error(""));
+            else loadCache(callback, e);
             LiveConfig.get().load();
             e.printStackTrace();
         }
     }
 
-    private void loadCache(Callback callback) {
+    private void loadCache(Callback callback, Throwable e) {
         if (!TextUtils.isEmpty(config.getJson())) checkJson(JsonParser.parseString(config.getJson()).getAsJsonObject(), callback);
-        else App.post(() -> callback.error(R.string.error_config_get));
+        else App.post(() -> callback.error(Notify.getError(R.string.error_config_get, e)));
     }
 
     private void checkJson(JsonObject object, Callback callback) {
@@ -177,17 +163,22 @@ public class ApiConfig {
             App.post(callback::success);
         } catch (Throwable e) {
             e.printStackTrace();
-            App.post(() -> callback.error(R.string.error_config_parse));
+            App.post(() -> callback.error(Notify.getError(R.string.error_config_parse, e)));
         }
     }
 
     private void initSite(JsonObject object) {
         for (JsonElement element : Json.safeListElement(object, "sites")) {
-            Site site = Site.objectFrom(element).sync();
+            Site site = Site.objectFrom(element);
+            if (sites.contains(site)) continue;
             site.setApi(parseApi(site.getApi()));
             site.setExt(parseExt(site.getExt()));
-            if (site.getKey().equals(config.getHome())) setHome(site);
-            if (!sites.contains(site)) sites.add(site);
+            sites.add(site.sync());
+        }
+        for (Site site : sites) {
+            if (site.getKey().equals(config.getHome())) {
+                setHome(site);
+            }
         }
     }
 
@@ -241,30 +232,42 @@ public class ApiConfig {
         boolean js = site.getApi().contains(".js");
         boolean py = site.getApi().startsWith("py_");
         boolean csp = site.getApi().startsWith("csp_");
-        if (js) return jsLoader.getSpider(site.getKey(), site.getApi(), site.getExt());
         if (py) return pyLoader.getSpider(site.getKey(), site.getApi(), site.getExt());
-        if (csp) return jarLoader.getSpider(site.getKey(), site.getApi(), site.getExt(), site.getJar());
+        else if (js) return jsLoader.getSpider(site.getKey(), site.getApi(), site.getExt(), site.getJar());
+        else if (csp) return jarLoader.getSpider(site.getKey(), site.getApi(), site.getExt(), site.getJar());
         else return new SpiderNull();
     }
 
-    public void setJar(String key) {
-        jarLoader.setJar(key);
+    public void setRecent(Site site) {
+        boolean js = site.getApi().contains(".js");
+        boolean py = site.getApi().startsWith("py_");
+        boolean csp = site.getApi().startsWith("csp_");
+        if (js) jsLoader.setRecent(site.getKey());
+        else if (py) pyLoader.setRecent(site.getKey());
+        else if (csp) jarLoader.setRecent(site.getJar());
     }
 
-    public Object[] proxyLocal(Map<?, ?> param) {
-        return jarLoader.proxyInvoke(param);
+    public Object[] proxyLocal(Map<String, String> params) {
+        if (params.containsKey("do") && params.get("do").equals("js")) {
+            return jsLoader.proxyInvoke(params);
+        } else if (params.containsKey("do") && params.get("do").equals("py")) {
+            return pyLoader.proxyInvoke(params);
+        } else {
+            return jarLoader.proxyInvoke(params);
+        }
     }
 
-    public JSONObject jsonExt(String key, LinkedHashMap<String, String> jxs, String url) throws Exception {
+    public JSONObject jsonExt(String key, LinkedHashMap<String, String> jxs, String url) throws Throwable {
         return jarLoader.jsonExt(key, jxs, url);
     }
 
-    public JSONObject jsonExtMix(String flag, String key, String name, LinkedHashMap<String, HashMap<String, String>> jxs, String url) throws Exception {
+    public JSONObject jsonExtMix(String flag, String key, String name, LinkedHashMap<String, HashMap<String, String>> jxs, String url) throws Throwable {
         return jarLoader.jsonExtMix(flag, key, name, jxs, url);
     }
 
     public List<Doh> getDoh() {
         List<Doh> items = Doh.get(App.get());
+        if (doh == null) return items;
         items.removeAll(doh);
         items.addAll(doh);
         return items;

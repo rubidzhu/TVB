@@ -13,6 +13,8 @@ import android.provider.MediaStore;
 
 import androidx.fragment.app.Fragment;
 
+import com.github.catvod.utils.Path;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -56,7 +58,7 @@ public class FileChooser {
         if (DocumentsContract.isDocumentUri(context, uri)) path = getPathFromDocumentUri(context, uri);
         else if (ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) path = getDataColumn(context, uri);
         else if (ContentResolver.SCHEME_FILE.equalsIgnoreCase(uri.getScheme())) path = uri.getPath();
-        return path != null ? path : createFileFromUri(context, uri).getAbsolutePath();
+        return path != null ? path : createFileFromUri(context, uri);
     }
 
     private static String getPathFromDocumentUri(Context context, Uri uri) {
@@ -100,7 +102,7 @@ public class FileChooser {
         }
     }
 
-    private static File createFileFromUri(Context context, Uri uri) {
+    private static String createFileFromUri(Context context, Uri uri) {
         String[] projection = {MediaStore.MediaColumns.DISPLAY_NAME};
         Cursor cursor = context.getContentResolver().query(uri, projection, null, null, null);
         try (cursor) {
@@ -110,12 +112,12 @@ public class FileChooser {
             int count;
             byte[] buffer = new byte[4096];
             int column = cursor.getColumnIndexOrThrow(projection[0]);
-            File file = new File(FileUtil.getCachePath(), cursor.getString(column));
+            File file = Path.cache(cursor.getString(column));
             FileOutputStream os = new FileOutputStream(file);
             while ((count = is.read(buffer)) != -1) os.write(buffer, 0, count);
             os.close();
             is.close();
-            return file;
+            return file.getAbsolutePath();
         } catch (Exception e) {
             return null;
         }

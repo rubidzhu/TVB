@@ -1,22 +1,29 @@
 package com.fongmi.android.tv.bean;
 
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
-import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.db.AppDatabase;
-import com.fongmi.android.tv.gson.StringAdapter;
+import com.fongmi.android.tv.gson.ExtAdapter;
+import com.github.catvod.utils.Json;
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 
 import java.util.Collections;
 import java.util.List;
 
-@Entity(ignoredColumns = {"type", "api", "playUrl", "playerType", "ext", "jar", "categories"})
-public class Site {
+import okhttp3.Headers;
+
+@Entity(ignoredColumns = {"type", "api", "playUrl", "timeout", "playerType", "ext", "jar", "style", "categories", "header"})
+public class Site implements Parcelable {
 
     @NonNull
     @PrimaryKey
@@ -30,6 +37,8 @@ public class Site {
     private String api;
     @SerializedName("playUrl")
     private String playUrl;
+    @SerializedName("timeout")
+    private Integer timeout;
     @SerializedName("playerType")
     private Integer playerType;
     @SerializedName("searchable")
@@ -38,18 +47,25 @@ public class Site {
     private Integer filterable;
     @SerializedName("changeable")
     private Integer changeable;
+    @SerializedName("recordable")
+    private Integer recordable;
+    @JsonAdapter(ExtAdapter.class)
     @SerializedName("ext")
     private String ext;
     @SerializedName("jar")
     private String jar;
+    @SerializedName("style")
+    private Style style;
     @SerializedName("categories")
     private List<String> categories;
+    @SerializedName("header")
+    private JsonElement header;
 
     private boolean activated;
 
     public static Site objectFrom(JsonElement element) {
         try {
-            return StringAdapter.gson().fromJson(element, Site.class);
+            return new Gson().fromJson(element, Site.class);
         } catch (Exception e) {
             return new Site();
         }
@@ -66,6 +82,9 @@ public class Site {
         site.setKey(key);
         site.setName(name);
         return site;
+    }
+
+    public Site() {
     }
 
     public String getKey() {
@@ -104,8 +123,12 @@ public class Site {
         return TextUtils.isEmpty(playUrl) ? "" : playUrl;
     }
 
+    public Integer getTimeout() {
+        return timeout == null ? Constant.TIMEOUT_PLAY : Math.max(timeout, 1) * 1000;
+    }
+
     public int getPlayerType() {
-        return playerType == null ? -1 : playerType;
+        return playerType == null ? -1 : Math.min(playerType, 2);
     }
 
     public Integer getSearchable() {
@@ -132,20 +155,36 @@ public class Site {
         this.changeable = changeable;
     }
 
+    public Integer getRecordable() {
+        return recordable == null ? 1 : recordable;
+    }
+
+    public void setRecordable(Integer recordable) {
+        this.recordable = recordable;
+    }
+
     public String getExt() {
         return TextUtils.isEmpty(ext) ? "" : ext;
     }
 
     public void setExt(String ext) {
-        this.ext = ext;
+        this.ext = ext.trim();
     }
 
     public String getJar() {
         return TextUtils.isEmpty(jar) ? "" : jar;
     }
 
+    public Style getStyle() {
+        return style == null ? Style.rect() : style;
+    }
+
     public List<String> getCategories() {
         return categories == null ? Collections.emptyList() : categories;
+    }
+
+    public JsonElement getHeader() {
+        return header;
     }
 
     public boolean isActivated() {
@@ -178,12 +217,13 @@ public class Site {
         return this;
     }
 
-    public int getSearchIcon() {
-        return isSearchable() ? R.drawable.ic_site_search : R.drawable.ic_site_block;
+    public boolean isRecordable() {
+        return getRecordable() == 1;
     }
 
-    public int getChangeIcon() {
-        return isChangeable() ? R.drawable.ic_site_change_on : R.drawable.ic_site_block;    //jim edit
+    public Site setRecordable(boolean recordable) {
+        setRecordable(recordable ? 1 : 0);
+        return this;
     }
 
     public static Site find(String key) {
@@ -194,10 +234,19 @@ public class Site {
         AppDatabase.get().getSiteDao().insertOrUpdate(this);
     }
 
+    public boolean isEmpty() {
+        return getKey().isEmpty() && getName().isEmpty();
+    }
+
+    public Headers getHeaders() {
+        return Headers.of(Json.toMap(getHeader()));
+    }
+
     public Site sync() {
         Site item = find(getKey());
         if (item == null) return this;
         setChangeable(item.getChangeable());
+        setRecordable(item.getRecordable());
         if (getSearchable() != 0) setSearchable(Math.max(1, item.getSearchable()));
         return this;
     }
@@ -209,4 +258,60 @@ public class Site {
         Site it = (Site) obj;
         return getKey().equals(it.getKey());
     }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(this.key);
+        dest.writeString(this.name);
+        dest.writeValue(this.type);
+        dest.writeString(this.api);
+        dest.writeString(this.playUrl);
+        dest.writeValue(this.timeout);
+        dest.writeValue(this.playerType);
+        dest.writeValue(this.searchable);
+        dest.writeValue(this.filterable);
+        dest.writeValue(this.changeable);
+        dest.writeValue(this.recordable);
+        dest.writeString(this.ext);
+        dest.writeString(this.jar);
+        dest.writeParcelable(this.style, flags);
+        dest.writeStringList(this.categories);
+        dest.writeByte(this.activated ? (byte) 1 : (byte) 0);
+    }
+
+    protected Site(Parcel in) {
+        this.key = in.readString();
+        this.name = in.readString();
+        this.type = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.api = in.readString();
+        this.playUrl = in.readString();
+        this.timeout = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.playerType = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.searchable = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.filterable = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.changeable = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.recordable = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.ext = in.readString();
+        this.jar = in.readString();
+        this.style = in.readParcelable(Style.class.getClassLoader());
+        this.categories = in.createStringArrayList();
+        this.activated = in.readByte() != 0;
+    }
+
+    public static final Creator<Site> CREATOR = new Creator<>() {
+        @Override
+        public Site createFromParcel(Parcel source) {
+            return new Site(source);
+        }
+
+        @Override
+        public Site[] newArray(int size) {
+            return new Site[size];
+        }
+    };
 }

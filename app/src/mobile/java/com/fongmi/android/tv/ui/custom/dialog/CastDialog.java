@@ -28,9 +28,9 @@ import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.server.Server;
 import com.fongmi.android.tv.ui.activity.ScanActivity;
 import com.fongmi.android.tv.ui.adapter.DeviceAdapter;
-import com.fongmi.android.tv.utils.FileUtil;
 import com.fongmi.android.tv.utils.Notify;
 import com.github.catvod.net.OkHttp;
+import com.github.catvod.utils.Path;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import org.greenrobot.eventbus.EventBus;
@@ -68,7 +68,10 @@ public class CastDialog extends BaseDialog implements DeviceAdapter.OnClickListe
 
     public CastDialog history(History history) {
         String id = history.getVodId();
-        String fd = id.startsWith("file") ? Server.get().getAddress() + "/" + id.replace(FileUtil.getRootPath(), "") : id;
+        String fd = history.getVodId();
+        if (fd.startsWith("/")) fd = Server.get().getAddress() + "/file://" + fd.replace(Path.rootPath(), "");
+        if (fd.startsWith("file")) fd = Server.get().getAddress() + "/" + fd.replace(Path.rootPath(), "");
+        if (fd.contains("127.0.0.1")) fd = fd.replace("127.0.0.1", Server.get().getIP());
         body.add("history", history.toString().replace(id, fd));
         return this;
     }
@@ -132,7 +135,7 @@ public class CastDialog extends BaseDialog implements DeviceAdapter.OnClickListe
 
     private void onRefresh(boolean clear) {
         if (fm) ScanTask.create(this).start(adapter.getIps());
-        DLNACastManager.getInstance().search(null, 15);
+        DLNACastManager.getInstance().search(null, 3);
         if (clear) adapter.clear();
     }
 
@@ -151,6 +154,7 @@ public class CastDialog extends BaseDialog implements DeviceAdapter.OnClickListe
 
     @Override
     public void onSuccess(String result) {
+        DLNACastManager.getInstance().play();
         listener.onCastTo();
         dismiss();
     }

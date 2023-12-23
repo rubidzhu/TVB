@@ -7,7 +7,7 @@ android {
     flavorDimensions "mode", "api", "abi"
 
     defaultConfig {
-        applicationId "com.fongmi.android.tv.jjj"
+        applicationId "com.fongmi.android.tv.zhuzhu"
         minSdk 21
         targetSdk 28
         javaCompileOptions {
@@ -20,13 +20,13 @@ android {
     productFlavors {
         leanback {
             dimension "mode"
-            versionCode 26
-            versionName "1.2.6"
+            versionCode 201
+            versionName "2.0.1"
         }
         mobile {
             dimension "mode"
-            versionCode 27
-            versionName "1.2.7"
+            versionCode 201
+            versionName "2.0.1"
         }
         java {
             dimension "api"
@@ -68,9 +68,9 @@ android {
         targetCompatibility JavaVersion.VERSION_11
     }
 
-    android.applicationVariants.all { variant ->
-        variant.outputs.all { output ->
-            outputFileName = "${variant.productFlavors[0].name}-${variant.productFlavors[1].name}-${variant.productFlavors[2].name}.apk"
+    android.applicationVariants.all {
+        variant -> variant.outputs.all {
+            output -> outputFileName = "${variant.productFlavors[0].name}-${variant.productFlavors[1].name}-${variant.productFlavors[2].name}.apk"
         }
     }
 
@@ -80,56 +80,54 @@ android {
     }
 }
 
+//tasks.withType(JavaCompile) {
+//    options.compilerArgs << "-Xlint:deprecation"
+//}
+
 dependencies {
-    implementation project(':drpy')
+    implementation project(':hook')
     implementation project(':tvbus')
-    implementation project(':zlive')
     implementation project(':catvod')
+    implementation project(':quickjs')
+    implementation project(':thunder')
+    implementation project(':jianpian')
     implementation project(':forcetech')
     implementation project(':ijkplayer')
     //pythonImplementation project(':pyramid')
-    implementation 'androidx.media3:media3-database:1.0.2'
-    implementation 'androidx.media3:media3-datasource:1.0.2'
-    implementation 'androidx.media3:media3-datasource-okhttp:1.0.2'
-    implementation 'androidx.media3:media3-datasource-rtmp:1.0.2'
-    implementation 'androidx.media3:media3-exoplayer:1.0.2'
-    implementation 'androidx.media3:media3-exoplayer-dash:1.0.2'
-    implementation 'androidx.media3:media3-exoplayer-hls:1.0.2'
-    implementation 'androidx.media3:media3-exoplayer-rtsp:1.0.2'
-    implementation 'androidx.media3:media3-exoplayer-smoothstreaming:1.0.2'
-    implementation 'androidx.media3:media3-extractor:1.0.2'
-    implementation 'androidx.media3:media3-session:1.0.2'
-    implementation 'androidx.media3:media3-ui:1.0.2'
+    implementation 'androidx.media3:media3-database:' + media3Version
+    implementation 'androidx.media3:media3-datasource:' + media3Version
+    implementation 'androidx.media3:media3-datasource-okhttp:' + media3Version
+    implementation 'androidx.media3:media3-datasource-rtmp:' + media3Version
+    implementation 'androidx.media3:media3-exoplayer:' + media3Version
+    implementation 'androidx.media3:media3-exoplayer-dash:' + media3Version
+    implementation 'androidx.media3:media3-exoplayer-hls:' + media3Version
+    implementation 'androidx.media3:media3-exoplayer-rtsp:' + media3Version
+    implementation 'androidx.media3:media3-exoplayer-smoothstreaming:' + media3Version
+    implementation 'androidx.media3:media3-extractor:' + media3Version
+    implementation 'androidx.media3:media3-session:' + media3Version
+    implementation 'androidx.media3:media3-ui:1.1.1'
     implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.biometric:biometric:1.1.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel:2.5.1'
-    implementation 'androidx.preference:preference:1.2.0'
-    implementation 'androidx.room:room-runtime:2.5.1'
+    implementation 'androidx.room:room-runtime:2.5.2'
     implementation 'cat.ereza:customactivityoncrash:2.4.0'
     implementation 'com.github.bassaer:materialdesigncolors:1.0.0'
     implementation 'com.github.bumptech.glide:glide:4.15.1'
     implementation 'com.github.bumptech.glide:annotations:4.15.1'
     implementation 'com.github.bumptech.glide:okhttp3-integration:4.15.1'
-    implementation('com.github.thegrizzlylabs:sardine-android:0.8') { exclude group: 'com.squareup.okhttp3', module: 'okhttp' }
+    implementation 'com.github.TeamNewPipe:NewPipeExtractor:340095515d45ecbee576872c7198992ebd8e4f08'
     implementation 'com.google.android.material:material:1.9.0'
-    implementation 'com.google.code.gson:gson:' + gsonVersion
-    implementation 'com.google.net.cronet:cronet-okhttp:0.1.0'
-    implementation 'com.google.zxing:core:3.4.1'
+    implementation 'com.google.zxing:core:3.3.0'
     implementation 'com.guolindev.permissionx:permissionx:1.7.1'
-    implementation 'com.hierynomus:smbj:0.11.5'
-    implementation 'com.squareup.okhttp3:okhttp:' + okhttpVersion
-    implementation 'com.squareup.okhttp3:okhttp-dnsoverhttps:' + okhttpVersion
-    implementation 'net.java.dev.jna:jna:5.12.1'
-    implementation 'org.apache.commons:commons-compress:1.20'
-    implementation 'org.chromium.net:cronet-embedded:101.4951.41'
     implementation 'org.greenrobot:eventbus:3.3.1'
-    implementation 'org.jsoup:jsoup:' + jsoupVersion
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
     implementation('org.simpleframework:simple-xml:2.7.1') { exclude group: 'stax', module: 'stax-api' exclude group: 'xpp3', module: 'xpp3' }
     leanbackImplementation 'androidx.leanback:leanback:1.2.0-alpha02'
     leanbackImplementation 'me.jessyan:autosize:1.2.1'
     mobileImplementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    mobileImplementation 'com.github.chrisbanes:PhotoView:2.3.0'
     mobileImplementation 'com.github.devin1014.DLNA-Cast:dlna-dmc:V1.0.0'
     mobileImplementation('com.journeyapps:zxing-android-embedded:4.3.0') { transitive = false }
-    annotationProcessor 'androidx.room:room-compiler:2.5.1'
+    annotationProcessor 'androidx.room:room-compiler:2.5.2'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.15.1'
 }

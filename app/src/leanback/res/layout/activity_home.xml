@@ -16,6 +16,7 @@
         android:paddingEnd="24dp"
         android:paddingBottom="8dp">
 
+	<!-- jim edit -->
         <ImageView
             android:id="@+id/logo"
             android:layout_width="32dp"
@@ -33,6 +34,7 @@
             android:paddingTop="12dp"
             android:paddingEnd="12dp"
             android:background="@color/violet" />
+	    <!-- end edit -->
 
         <com.fongmi.android.tv.ui.custom.CustomTitleView
             android:id="@+id/title"

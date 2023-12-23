@@ -1,31 +1,27 @@
 package com.fongmi.android.tv.bean;
 
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.text.TextUtils;
 import android.view.View;
 
-import androidx.annotation.NonNull;
-
-import com.fongmi.android.tv.utils.Trans;
-import com.fongmi.android.tv.utils.Utils;
+import com.github.catvod.utils.Trans;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
 
-import org.simpleframework.xml.Attribute;
 import org.simpleframework.xml.Element;
 import org.simpleframework.xml.ElementList;
 import org.simpleframework.xml.Path;
 import org.simpleframework.xml.Root;
-import org.simpleframework.xml.Text;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 
 @Root(strict = false)
-public class Vod {
+public class Vod implements Parcelable {
 
     @Element(name = "id", required = false)
     @SerializedName("vod_id")
@@ -76,6 +72,12 @@ public class Vod {
     @SerializedName("vod_tag")
     private String vodTag;
 
+    @SerializedName("cate")
+    private Cate cate;
+
+    @SerializedName("style")
+    private Style style;
+
     @Path("dl")
     @ElementList(entry = "dd", required = false, inline = true)
     private List<Flag> vodFlags;
@@ -88,12 +90,23 @@ public class Vod {
         return items == null ? Collections.emptyList() : items;
     }
 
+    public Vod() {
+    }
+
     public String getVodId() {
         return TextUtils.isEmpty(vodId) ? "" : vodId.trim();
     }
 
+    public void setVodId(String vodId) {
+        this.vodId = vodId;
+    }
+
     public String getVodName() {
         return TextUtils.isEmpty(vodName) ? "" : vodName.trim();
+    }
+
+    public void setVodName(String vodName) {
+        this.vodName = vodName;
     }
 
     public String getTypeName() {
@@ -102,6 +115,10 @@ public class Vod {
 
     public String getVodPic() {
         return TextUtils.isEmpty(vodPic) ? "" : vodPic.trim();
+    }
+
+    public void setVodPic(String vodPic) {
+        this.vodPic = vodPic;
     }
 
     public String getVodRemarks() {
@@ -140,8 +157,20 @@ public class Vod {
         return TextUtils.isEmpty(vodTag) ? "" : vodTag;
     }
 
+    public Cate getCate() {
+        return cate;
+    }
+
+    public Style getStyle() {
+        return style;
+    }
+
     public List<Flag> getVodFlags() {
         return vodFlags = vodFlags == null ? new ArrayList<>() : vodFlags;
+    }
+
+    public void setVodFlags(List<Flag> vodFlags) {
+        this.vodFlags = vodFlags;
     }
 
     public Site getSite() {
@@ -168,12 +197,34 @@ public class Vod {
         return getSite() != null || getVodYear().length() < 4 ? View.GONE : View.VISIBLE;
     }
 
+    public int getNameVisible() {
+        return getVodName().isEmpty() ? View.GONE : View.VISIBLE;
+    }
+
     public int getRemarkVisible() {
         return getVodRemarks().isEmpty() ? View.GONE : View.VISIBLE;
     }
 
     public boolean isFolder() {
-        return getVodTag().equals("folder");
+        return getVodTag().equals("folder") || getCate() != null;
+    }
+
+    public boolean isManga() {
+        return getVodTag().equals("manga");
+    }
+
+    public Style getStyle(Style style) {
+        return getStyle() == null ? style : getStyle();
+    }
+
+    public String getVodPic(String pic) {
+        if (getVodPic().isEmpty()) setVodPic(pic);
+        return getVodPic();
+    }
+
+    public String getVodName(String name) {
+        if (getVodName().isEmpty()) setVodName(name);
+        return getVodName();
     }
 
     public void trans() {
@@ -192,194 +243,84 @@ public class Vod {
         String[] playUrls = getVodPlayUrl().split("\\$\\$\\$");
         for (int i = 0; i < playFlags.length; i++) {
             if (playFlags[i].isEmpty() || i >= playUrls.length) continue;
-            Vod.Flag item = new Vod.Flag(playFlags[i].trim());
+            Flag item = Flag.create(playFlags[i].trim());
             item.createEpisode(playUrls[i]);
             getVodFlags().add(item);
         }
-        for (Vod.Flag item : getVodFlags()) {
+        for (Flag item : getVodFlags()) {
             if (item.getUrls() == null) continue;
             item.createEpisode(item.getUrls());
         }
     }
 
-    public static class Flag {
-
-        @Attribute(name = "flag", required = false)
-        @SerializedName("flag")
-        private String flag;
-        private String show;
-
-        @Text
-        private String urls;
-
-        @SerializedName("episodes")
-        private List<Episode> episodes;
-
-        private boolean activated;
-        private int position;
-
-        public Flag() {
-            this.episodes = new ArrayList<>();
-        }
-
-        public Flag(String flag) {
-            this.episodes = new ArrayList<>();
-            this.show = Trans.s2t(flag);
-            this.flag = flag;
-            this.position = -1;
-        }
-
-        public String getShow() {
-            return TextUtils.isEmpty(show) ? getFlag() : show;
-        }
-
-        public String getFlag() {
-            return TextUtils.isEmpty(flag) ? "" : flag;
-        }
-
-        public String getUrls() {
-            return urls;
-        }
-
-        public List<Episode> getEpisodes() {
-            return episodes;
-        }
-
-        public boolean isActivated() {
-            return activated;
-        }
-
-        public void setActivated(Flag item) {
-            this.activated = item.equals(this);
-            if (activated) item.episodes = episodes;
-        }
-
-        public int getPosition() {
-            return position;
-        }
-
-        public void setPosition(int position) {
-            this.position = position;
-        }
-
-        public void createEpisode(String data) {
-            String[] urls = data.contains("#") ? data.split("#") : new String[]{data};
-            for (int i = 0; i < urls.length; i++) {
-                String[] split = urls[i].split("\\$");
-                String number = String.format(Locale.getDefault(), "%02d", i + 1);
-                Episode episode = split.length > 1 ? new Vod.Flag.Episode(split[0].isEmpty() ? number : split[0].trim(), split[1]) : new Vod.Flag.Episode(number, urls[i]);
-                if (!getEpisodes().contains(episode)) getEpisodes().add(episode);
-            }
-        }
-
-        public void toggle(boolean activated, Episode episode) {
-            if (activated) setActivated(episode);
-            else for (Episode item : getEpisodes()) item.deactivated();
-        }
-
-        private void setActivated(Episode episode) {
-            setPosition(getEpisodes().indexOf(episode));
-            for (int i = 0; i < getEpisodes().size(); i++) getEpisodes().get(i).setActivated(i == getPosition());
-        }
-
-        public Episode find(String remarks) {
-            int number = Utils.getDigit(remarks);
-            if (getEpisodes().size() == 1) return getEpisodes().get(0);
-            for (Vod.Flag.Episode item : getEpisodes()) if (item.rule1(remarks)) return item;
-            for (Vod.Flag.Episode item : getEpisodes()) if (item.rule2(number)) return item;
-            for (Vod.Flag.Episode item : getEpisodes()) if (item.rule3(remarks)) return item;
-            for (Vod.Flag.Episode item : getEpisodes()) if (item.rule4(remarks)) return item;
-            return getPosition() != -1 ? getEpisodes().get(getPosition()) : null;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (!(obj instanceof Flag)) return false;
-            Flag it = (Flag) obj;
-            return getFlag().equals(it.getFlag());
-        }
-
-        @NonNull
-        @Override
-        public String toString() {
-            return new Gson().toJson(this);
-        }
-
-        public static class Episode {
-
-            @SerializedName("name")
-            private final String name;
-            @SerializedName("url")
-            private final String url;
-
-            private final int number;
-
-            private boolean activated;
-
-            public static Episode objectFrom(String str) {
-                return new Gson().fromJson(str, Episode.class);
-            }
-
-            public static List<Episode> arrayFrom(String str) {
-                Type listType = new TypeToken<List<Episode>>() {}.getType();
-                List<Episode> items = new Gson().fromJson(str, listType);
-                return items == null ? Collections.emptyList() : items;
-            }
-
-            public Episode(String name, String url) {
-                this.number = Utils.getDigit(name);
-                this.name = Trans.s2t(name);
-                this.url = url;
-            }
-
-            public String getName() {
-                return name;
-            }
-
-            public String getUrl() {
-                return url;
-            }
-
-            public int getNumber() {
-                return number;
-            }
-
-            public boolean isActivated() {
-                return activated;
-            }
-
-            public void deactivated() {
-                this.activated = false;
-            }
-
-            public void setActivated(boolean activated) {
-                this.activated = activated;
-            }
-
-            public boolean rule1(String name) {
-                return getName().equalsIgnoreCase(name);
-            }
-
-            public boolean rule2(int number) {
-                return getNumber() == number && number != -1;
-            }
-
-            public boolean rule3(String name) {
-                return getName().toLowerCase().contains(name.toLowerCase());
-            }
-
-            public boolean rule4(String name) {
-                return name.toLowerCase().contains(getName().toLowerCase());
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (this == obj) return true;
-                if (!(obj instanceof Episode)) return false;
-                Episode it = (Episode) obj;
-                return getUrl().equals(it.getUrl()) || getName().equals(it.getName());
-            }
-        }
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof Vod)) return false;
+        Vod it = (Vod) obj;
+        return getVodId().equals(it.getVodId());
     }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(this.vodId);
+        dest.writeString(this.vodName);
+        dest.writeString(this.typeName);
+        dest.writeString(this.vodPic);
+        dest.writeString(this.vodRemarks);
+        dest.writeString(this.vodYear);
+        dest.writeString(this.vodArea);
+        dest.writeString(this.vodDirector);
+        dest.writeString(this.vodActor);
+        dest.writeString(this.vodContent);
+        dest.writeString(this.vodPlayFrom);
+        dest.writeString(this.vodPlayUrl);
+        dest.writeString(this.vodTag);
+        dest.writeParcelable(this.cate, flags);
+        dest.writeParcelable(this.style, flags);
+        dest.writeTypedList(this.vodFlags);
+        dest.writeParcelable(this.site, flags);
+    }
+
+    protected Vod(Parcel in) {
+        this.vodId = in.readString();
+        this.vodName = in.readString();
+        this.typeName = in.readString();
+        this.vodPic = in.readString();
+        this.vodRemarks = in.readString();
+        this.vodYear = in.readString();
+        this.vodArea = in.readString();
+        this.vodDirector = in.readString();
+        this.vodActor = in.readString();
+        this.vodContent = in.readString();
+        this.vodPlayFrom = in.readString();
+        this.vodPlayUrl = in.readString();
+        this.vodTag = in.readString();
+        //bellow edit by jim
+        //this.cate = in.readParcelable(Cate.class.getClassLoader());
+        //this.style = in.readParcelable(Style.class.getClassLoader());
+        this.vodFlags = in.createTypedArrayList(Flag.CREATOR);
+        //this.site = in.readParcelable(Site.class.getClassLoader());
+        this.cate = in.readParcelable(Cate.class.getClassLoader());
+        this.style = in.readParcelable(Style.class.getClassLoader());
+        this.site = in.readParcelable(Site.class.getClassLoader());
+        //end if
+    }
+
+    public static final Creator<Vod> CREATOR = new Creator<>() {
+        @Override
+        public Vod createFromParcel(Parcel source) {
+            return new Vod(source);
+        }
+
+        @Override
+        public Vod[] newArray(int size) {
+            return new Vod[size];
+        }
+    };
 }

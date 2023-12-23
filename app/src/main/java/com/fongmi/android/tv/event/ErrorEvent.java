@@ -8,31 +8,42 @@ import org.greenrobot.eventbus.EventBus;
 public class ErrorEvent {
 
     private final Type type;
-    private final boolean retry;
+    private final int retry;
+    private String msg;
 
     public static void url() {
-        EventBus.getDefault().post(new ErrorEvent(Type.URL, false));
+        EventBus.getDefault().post(new ErrorEvent(Type.URL, 0));
     }
 
     public static void parse() {
-        EventBus.getDefault().post(new ErrorEvent(Type.PARSE, false));
+        EventBus.getDefault().post(new ErrorEvent(Type.PARSE, 0));
     }
 
-    public static void format(boolean retry) {
+    public static void format(int retry) {
         EventBus.getDefault().post(new ErrorEvent(Type.FORMAT, retry));
     }
 
     public static void episode() {
-        EventBus.getDefault().post(new ErrorEvent(Type.EPISODE, false));
+        EventBus.getDefault().post(new ErrorEvent(Type.EPISODE, 0));
     }
 
     public static void timeout() {
-        EventBus.getDefault().post(new ErrorEvent(Type.TIMEOUT, false));
+        EventBus.getDefault().post(new ErrorEvent(Type.TIMEOUT, 0));
     }
 
-    public ErrorEvent(Type type, boolean retry) {
+    public static void extract(String msg) {
+        EventBus.getDefault().post(new ErrorEvent(Type.EXTRACT, 0, msg));
+    }
+
+    public ErrorEvent(Type type, int retry) {
         this.type = type;
         this.retry = retry;
+    }
+
+    public ErrorEvent(Type type, int retry, String msg) {
+        this.type = type;
+        this.retry = retry;
+        this.msg = msg;
     }
 
     private int getResId() {
@@ -48,7 +59,7 @@ public class ErrorEvent {
         return type;
     }
 
-    public boolean isRetry() {
+    public int getRetry() {
         return retry;
     }
 
@@ -57,10 +68,10 @@ public class ErrorEvent {
     }
 
     public String getMsg() {
-        return getResId() == -1 ? "" : ResUtil.getString(getResId());
+        return getResId() == -1 ? msg : ResUtil.getString(getResId());
     }
 
     public enum Type {
-        URL, PARSE, FORMAT, EPISODE, TIMEOUT
+        URL, PARSE, FORMAT, EPISODE, TIMEOUT, EXTRACT
     }
 }

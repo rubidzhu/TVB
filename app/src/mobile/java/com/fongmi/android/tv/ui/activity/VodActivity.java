@@ -13,6 +13,8 @@ import com.fongmi.android.tv.databinding.ActivityVodBinding;
 import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.fragment.TypeFragment;
 
+import java.util.HashMap;
+
 public class VodActivity extends BaseActivity {
 
     private ActivityVodBinding mBinding;
@@ -21,7 +23,7 @@ public class VodActivity extends BaseActivity {
         if (result == null || result.getTypes().isEmpty()) return;
         Intent intent = new Intent(activity, VodActivity.class);
         intent.putExtra("key", key);
-        intent.putExtra("result", result.toString());
+        intent.putExtra("result", result);
         activity.startActivity(intent);
     }
 
@@ -29,8 +31,8 @@ public class VodActivity extends BaseActivity {
         return getIntent().getStringExtra("key");
     }
 
-    private String getResult() {
-        return getIntent().getStringExtra("result");
+    private Result getResult() {
+        return getIntent().getParcelableExtra("result");
     }
 
     @Override
@@ -40,9 +42,18 @@ public class VodActivity extends BaseActivity {
 
     @Override
     protected void initView(Bundle savedInstanceState) {
-        Result result = Result.fromJson(getResult());
+        Result result = getResult();
         Class type = result.getTypes().get(0);
         mBinding.text.setText(type.getTypeName());
-        getSupportFragmentManager().beginTransaction().replace(R.id.container, TypeFragment.newInstance(getKey(), type.getTypeId(), type.getTypeFlag().equals("1"))).commitAllowingStateLoss();
+        getSupportFragmentManager().beginTransaction().replace(R.id.container, TypeFragment.newInstance(getKey(), type.getTypeId(), new HashMap<>(), type.getTypeFlag().equals("1")), "0").commitAllowingStateLoss();
+    }
+
+    private TypeFragment getFragment() {
+        return (TypeFragment) getSupportFragmentManager().findFragmentByTag("0");
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (getFragment().canBack()) super.onBackPressed();
     }
 }

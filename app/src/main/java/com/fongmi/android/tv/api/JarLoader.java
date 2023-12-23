@@ -3,11 +3,12 @@ package com.fongmi.android.tv.api;
 import android.content.Context;
 
 import com.fongmi.android.tv.App;
-import com.fongmi.android.tv.utils.FileUtil;
 import com.fongmi.android.tv.utils.Utils;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderNull;
 import com.github.catvod.net.OkHttp;
+import com.github.catvod.utils.Path;
+import com.github.catvod.utils.Util;
 
 import org.json.JSONObject;
 
@@ -25,70 +26,84 @@ public class JarLoader {
     private final ConcurrentHashMap<String, DexClassLoader> loaders;
     private final ConcurrentHashMap<String, Method> methods;
     private final ConcurrentHashMap<String, Spider> spiders;
-    private String jar;
+    private String recent;
 
     public JarLoader() {
-        this.loaders = new ConcurrentHashMap<>();
-        this.methods = new ConcurrentHashMap<>();
-        this.spiders = new ConcurrentHashMap<>();
+        loaders = new ConcurrentHashMap<>();
+        methods = new ConcurrentHashMap<>();
+        spiders = new ConcurrentHashMap<>();
     }
 
     public void clear() {
-        this.loaders.clear();
-        this.methods.clear();
-        this.spiders.clear();
+        for (Spider spider : spiders.values()) spider.destroy();
+        loaders.clear();
+        methods.clear();
+        spiders.clear();
     }
 
-    public void setJar(String jar) {
-        this.jar = jar;
+    public void setRecent(String recent) {
+        this.recent = recent;
     }
 
-    private void load(String key, File file) throws Throwable {
-        DexClassLoader loader = new DexClassLoader(file.getAbsolutePath(), FileUtil.getCachePath(), null, App.get().getClassLoader());
-        Class<?> classInit = loader.loadClass("com.github.catvod.spider.Init");
-        Method method = classInit.getMethod("init", Context.class);
-        method.invoke(classInit, App.get());
-        loaders.put(key, loader);
+    private void load(String key, File file) {
+        loaders.put(key, new DexClassLoader(file.getAbsolutePath(), Path.jar().getAbsolutePath(), null, App.get().getClassLoader()));
+        invokeInit(key);
         putProxy(key);
     }
 
-    private void putProxy(String key) {
+    private void invokeInit(String key) {
         try {
-            Class<?> classProxy = loaders.get(key).loadClass("com.github.catvod.spider.Proxy");
-            methods.put(key, classProxy.getMethod("proxy", Map.class));
-        } catch (Exception e) {
+            Class<?> clz = loaders.get(key).loadClass("com.github.catvod.spider.Init");
+            Method method = clz.getMethod("init", Context.class);
+            method.invoke(clz, App.get());
+        } catch (Throwable e) {
             e.printStackTrace();
         }
     }
 
-    private File download(String jar) {
+    private void putProxy(String key) {
         try {
-            return FileUtil.write(FileUtil.getJar(jar), OkHttp.newCall(jar).execute().body().bytes());
-        } catch (Exception e) {
-            return FileUtil.getJar(jar);
+            Class<?> clz = loaders.get(key).loadClass("com.github.catvod.spider.Proxy");
+            Method method = clz.getMethod("proxy", Map.class);
+            methods.put(key, method);
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
     }
 
-    public void parseJar(String key, String jar) throws Throwable {
+    private File download(String url) {
+        try {
+            return Path.write(Path.jar(url), OkHttp.newCall(url).execute().body().bytes());
+        } catch (Exception e) {
+            return Path.jar(url);
+        }
+    }
+
+    public void parseJar(String key, String jar) {
         String[] texts = jar.split(";md5;");
         String md5 = !jar.startsWith("file") && texts.length > 1 ? texts[1].trim() : "";
         jar = texts[0];
         if (jar.startsWith("img+")) {
             load(key, Decoder.getSpider(jar, md5));
-        } else if (md5.length() > 0 && FileUtil.equals(jar, md5)) {
-            load(key, FileUtil.getJar(jar));
+        } else if (md5.length() > 0 && Util.equals(jar, md5)) {
+            load(key, Path.jar(jar));
         } else if (jar.startsWith("http")) {
             load(key, download(jar));
         } else if (jar.startsWith("file")) {
-            load(key, FileUtil.getLocal(jar));
+            load(key, Path.local(jar));
         } else if (!jar.isEmpty()) {
             parseJar(key, Utils.convert(ApiConfig.getUrl(), jar));
         }
     }
 
+    public DexClassLoader getLoader(String key, String jar) {
+        if (!loaders.containsKey(key)) parseJar(key, jar);
+        return loaders.get(key);
+    }
+
     public Spider getSpider(String key, String api, String ext, String jar) {
         try {
-            String jaKey = Utils.getMd5(jar);
+            String jaKey = Util.md5(jar);
             String spKey = jaKey + key;
             if (spiders.containsKey(spKey)) return spiders.get(spKey);
             if (!loaders.containsKey(jaKey)) parseJar(jaKey, jar);
@@ -102,24 +117,24 @@ public class JarLoader {
         }
     }
 
-    public JSONObject jsonExt(String key, LinkedHashMap<String, String> jxs, String url) throws Exception {
+    public JSONObject jsonExt(String key, LinkedHashMap<String, String> jxs, String url) throws Throwable {
         Class<?> clz = loaders.get("").loadClass("com.github.catvod.parser.Json" + key);
         Method method = clz.getMethod("parse", LinkedHashMap.class, String.class);
         return (JSONObject) method.invoke(null, jxs, url);
     }
 
-    public JSONObject jsonExtMix(String flag, String key, String name, LinkedHashMap<String, HashMap<String, String>> jxs, String url) throws Exception {
+    public JSONObject jsonExtMix(String flag, String key, String name, LinkedHashMap<String, HashMap<String, String>> jxs, String url) throws Throwable {
         Class<?> clz = loaders.get("").loadClass("com.github.catvod.parser.Mix" + key);
         Method method = clz.getMethod("parse", LinkedHashMap.class, String.class, String.class, String.class);
         return (JSONObject) method.invoke(null, jxs, name, flag, url);
     }
 
-    public Object[] proxyInvoke(Map<?, ?> params) {
+    public Object[] proxyInvoke(Map<String, String> params) {
         try {
-            Method method = methods.get(Utils.getMd5(jar));
-            if (method != null) return (Object[]) method.invoke(null, params);
-            else return null;
-        } catch (Exception e) {
+            Method method = methods.get(Util.md5(recent));
+            if (method == null) return null;
+            return (Object[]) method.invoke(null, params);
+        } catch (Throwable e) {
             e.printStackTrace();
             return null;
         }

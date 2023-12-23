@@ -18,7 +18,7 @@
     <string name="push_info">Scan QR Code or enter the URL in browser\n<xliff:g name="name">%s</xliff:g></string>
 
     //below add by jim
-    <string name="urlConfig_tip1">☆点击配置自用本地网址-1-(载入快)</string>
-    <string name="urlConfig_tip2">☆点击配置自用在线网址-2-(推荐)</string>
+    <string name="urlConfig_tip1">☆点击配置本地网址-1</string>
+    <string name="urlConfig_tip2">☆点击配置在线网址-2-(推荐)</string>
 
 </resources>

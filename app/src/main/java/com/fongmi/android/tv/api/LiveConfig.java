@@ -3,8 +3,8 @@ package com.fongmi.android.tv.api;
 import android.text.TextUtils;
 
 import com.fongmi.android.tv.App;
-import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.Setting;
 import com.fongmi.android.tv.bean.Channel;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Depot;
@@ -13,8 +13,9 @@ import com.fongmi.android.tv.bean.Keep;
 import com.fongmi.android.tv.bean.Live;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.impl.Callback;
-import com.fongmi.android.tv.utils.Json;
-import com.fongmi.android.tv.utils.Prefers;
+import com.fongmi.android.tv.ui.activity.LiveActivity;
+import com.fongmi.android.tv.utils.Notify;
+import com.github.catvod.utils.Json;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -43,6 +44,10 @@ public class LiveConfig {
 
     public static String getDesc() {
         return get().getConfig().getDesc();
+    }
+
+    public static String getResp() {
+        return get().getHome().getCore().getResp();
     }
 
     public static int getHomeIndex() {
@@ -95,9 +100,10 @@ public class LiveConfig {
     private void loadConfig(Callback callback) {
         try {
             parseConfig(Decoder.getJson(config.getUrl()), callback);
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            if (TextUtils.isEmpty(config.getUrl())) App.post(() -> callback.error(""));
+            else App.post(() -> callback.error(Notify.getError(R.string.error_config_get, e)));
             e.printStackTrace();
-            App.post(() -> callback.error(TextUtils.isEmpty(config.getUrl()) ? 0 : R.string.error_config_get));
         }
     }
 
@@ -137,19 +143,24 @@ public class LiveConfig {
 
     public void parseConfig(JsonObject object, Callback callback) {
         if (!object.has("lives")) return;
-        for (JsonElement element : Json.safeListElement(object, "lives")) parse(Live.objectFrom(element).check());
+        for (JsonElement element : Json.safeListElement(object, "lives")) add(Live.objectFrom(element).check());
+        for (Live live : lives) if (live.getName().equals(config.getHome())) setHome(live);
         if (home == null) setHome(lives.isEmpty() ? new Live() : lives.get(0));
-        if (home.isBoot()) App.post(Product::bootLive);
+        if (home.isBoot() || Setting.isBootLive()) App.post(this::bootLive);
         if (callback != null) App.post(callback::success);
+    }
+
+    private void add(Live live) {
+        if (!lives.contains(live)) lives.add(live);
+    }
+
+    private void bootLive() {
+        LiveActivity.start(App.activity());
+        Setting.putBootLive(false);
     }
 
     public void parse(JsonObject object) {
         parseConfig(object, null);
-    }
-
-    private void parse(Live live) {
-        if (live.getName().equals(config.getHome())) setHome(live);
-        if (!lives.contains(live)) lives.add(live);
     }
 
     private void setKeep(List<Group> items) {
@@ -166,7 +177,7 @@ public class LiveConfig {
     }
 
     private int[] getKeep(List<Group> items) {
-        String[] splits = Prefers.getKeep().split(AppDatabase.SYMBOL);
+        String[] splits = Setting.getKeep().split(AppDatabase.SYMBOL);
         if (!home.getName().equals(splits[0])) return new int[]{1, 0};
         for (int i = 0; i < items.size(); i++) {
             Group group = items.get(i);
@@ -181,7 +192,7 @@ public class LiveConfig {
 
     public void setKeep(Channel channel) {
         if (home == null || channel.getGroup().isHidden() || channel.getUrls().isEmpty()) return;
-        Prefers.putKeep(home.getName() + AppDatabase.SYMBOL + channel.getGroup().getName() + AppDatabase.SYMBOL + channel.getName() + AppDatabase.SYMBOL + channel.getCurrent());
+        Setting.putKeep(home.getName() + AppDatabase.SYMBOL + channel.getGroup().getName() + AppDatabase.SYMBOL + channel.getName() + AppDatabase.SYMBOL + channel.getCurrent());
     }
 
     public int[] find(List<Group> items) {

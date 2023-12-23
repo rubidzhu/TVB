@@ -97,7 +97,7 @@ public class DownloadActivity extends BaseActivity implements IdmAdapter.OnClick
                 RefreshEvent.video();
             }
 
-            @Override
+            //@Override
             public void error(int resId) {
                 Notify.show(resId);
             }

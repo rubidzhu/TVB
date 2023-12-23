@@ -39,7 +39,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="12dp"
-        android:text="      本项目版本发布地址：https://zhuzhuok.zeabur.app/article/tech-1。开源地址是：https://github.com/rubidzhu/TVB。"
+        android:text="      本项目版本发布地址：https://zhuzhuok.top/article/tech-1。开源地址是：https://github.com/rubidzhu/TVB。"
         android:textSize="16sp"
         android:textColor="@color/black" />
 

@@ -214,7 +214,7 @@ public class History {
     }
 
     public String getSiteName() {
-        return ApiConfig.getSiteName(getSiteKey());
+        return ApiConfig.get().getSite(getSiteKey()).getName();
     }
 
     public String getSiteKey() {
@@ -225,12 +225,12 @@ public class History {
         return getKey().split(AppDatabase.SYMBOL)[1];
     }
 
-    public Vod.Flag getFlag() {
-        return new Vod.Flag(getVodFlag());
+    public Flag getFlag() {
+        return Flag.create(getVodFlag());
     }
 
-    public Vod.Flag.Episode getEpisode() {
-        return new Vod.Flag.Episode(getVodRemarks(), getEpisodeUrl());
+    public Episode getEpisode() {
+        return Episode.create(getVodRemarks(), getEpisodeUrl());
     }
 
     public int getSiteVisible() {
@@ -243,6 +243,10 @@ public class History {
 
     public int getRevPlayHint() {
         return isRevPlay() ? R.string.play_backward_hint : R.string.play_forward_hint;
+    }
+
+    public boolean isNew() {
+        return getCreateTime() == 0 && getPosition() == 0;
     }
 
     public static List<History> get() {
@@ -275,9 +279,7 @@ public class History {
         }
     }
 
-    public void update(long position, long duration) {
-        setPosition(position);
-        setDuration(duration);
+    public void update() {
         merge(find(), false);
         save();
     }
@@ -307,13 +309,17 @@ public class History {
         return AppDatabase.get().getHistoryDao().findByName(ApiConfig.getCid(), getVodName());
     }
 
-    public void findEpisode(List<Vod.Flag> flags) {
-        setVodFlag(flags.get(0).getFlag());
-        setVodRemarks(flags.get(0).getEpisodes().get(0).getName());
+    public void findEpisode(List<Flag> flags) {
+        if (flags.size() > 0) {
+            setVodFlag(flags.get(0).getFlag());
+            if (flags.get(0).getEpisodes().size() > 0) {
+                setVodRemarks(flags.get(0).getEpisodes().get(0).getName());
+            }
+        }
         for (History item : find()) {
             if (getPosition() > 0) break;
-            for (Vod.Flag flag : flags) {
-                Vod.Flag.Episode episode = flag.find(item.getVodRemarks());
+            for (Flag flag : flags) {
+                Episode episode = flag.find(item.getVodRemarks(), true);
                 if (episode == null) continue;
                 setVodFlag(flag.getFlag());
                 setPosition(item.getPosition());

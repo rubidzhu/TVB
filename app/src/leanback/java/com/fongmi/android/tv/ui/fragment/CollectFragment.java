@@ -1,6 +1,7 @@
 package com.fongmi.android.tv.ui.fragment;
 
 import android.app.Activity;
+import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 
@@ -9,18 +10,21 @@ import androidx.annotation.Nullable;
 import androidx.leanback.widget.ArrayObjectAdapter;
 import androidx.leanback.widget.ItemBridgeAdapter;
 import androidx.leanback.widget.ListRow;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.viewbinding.ViewBinding;
 
-import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.bean.Collect;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.FragmentVodBinding;
+import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.ui.activity.DetailActivity;
 import com.fongmi.android.tv.ui.activity.VodActivity;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
+import com.fongmi.android.tv.ui.custom.CustomScroller;
 import com.fongmi.android.tv.ui.custom.CustomSelector;
 import com.fongmi.android.tv.ui.presenter.VodPresenter;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -29,19 +33,30 @@ import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CollectFragment extends BaseFragment implements VodPresenter.OnClickListener {
+public class CollectFragment extends BaseFragment implements CustomScroller.Callback, VodPresenter.OnClickListener {
 
     private FragmentVodBinding mBinding;
     private ArrayObjectAdapter mAdapter;
     private ArrayObjectAdapter mLast;
-    private String json;
+    private CustomScroller mScroller;
+    private SiteViewModel mViewModel;
+    private Collect mCollect;
+    private String mKeyword;
 
-    public static CollectFragment newInstance(List<Vod> items) {
-        return new CollectFragment().setJson(App.gson().toJson(items));
+    public static CollectFragment newInstance(String keyword, Collect collect) {
+        Bundle args = new Bundle();
+        args.putString("keyword", keyword);
+        CollectFragment fragment = new CollectFragment().setCollect(collect);
+        fragment.setArguments(args);
+        return fragment;
     }
 
-    private CollectFragment setJson(String json) {
-        this.json = json;
+    private String getKeyword() {
+        return mKeyword = mKeyword == null ? getArguments().getString("keyword") : mKeyword;
+    }
+
+    private CollectFragment setCollect(Collect collect) {
+        this.mCollect = collect;
         return this;
     }
 
@@ -52,16 +67,30 @@ public class CollectFragment extends BaseFragment implements VodPresenter.OnClic
 
     @Override
     protected void initView() {
+        setRecyclerView();
+        setViewModel();
+    }
+
+    private void setRecyclerView() {
         CustomSelector selector = new CustomSelector();
         selector.addPresenter(ListRow.class, new CustomRowPresenter(16), VodPresenter.class);
         mBinding.recycler.setAdapter(new ItemBridgeAdapter(mAdapter = new ArrayObjectAdapter(selector)));
         mBinding.recycler.setHeader(getActivity().findViewById(R.id.result), getActivity().findViewById(R.id.recycler));
+        mBinding.recycler.addOnScrollListener(mScroller = new CustomScroller(this));
         mBinding.recycler.setVerticalSpacing(ResUtil.dp2px(16));
+    }
+
+    private void setViewModel() {
+        mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
+        mViewModel.result.observe(this, result -> {
+            mScroller.endLoading(result);
+            addVideo(result.getList());
+        });
     }
 
     @Override
     protected void initData() {
-        addVideo(Vod.arrayFrom(json));
+        addVideo(mCollect.getList());
     }
 
     private boolean checkLastSize(List<Vod> items) {
@@ -89,12 +118,19 @@ public class CollectFragment extends BaseFragment implements VodPresenter.OnClic
     public void onItemClick(Vod item) {
         getActivity().setResult(Activity.RESULT_OK);
         if (item.isFolder()) VodActivity.start(getActivity(), item.getSiteKey(), Result.folder(item));
-        else DetailActivity.start(getActivity(), item.getSiteKey(), item.getVodId(), item.getVodName());
+        else DetailActivity.start(getActivity(), item.getSiteKey(), item.getVodId(), item.getVodName(), item.getVodPic());
     }
 
     @Override
     public boolean onLongClick(Vod item) {
         return false;
+    }
+
+    @Override
+    public void onLoadMore(String page) {
+        if (mCollect.getSite().getKey().equals("all")) return;
+        mViewModel.searchContent(mCollect.getSite(), getKeyword(), page);
+        mScroller.setLoading(true);
     }
 
     @Override

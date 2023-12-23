@@ -500,7 +500,7 @@
                 android:textColor="@color/white"
                 android:textSize="18sp"
                 tools:text="1.2.1" />
-
+	<!-- jim edit -->
         <TextView
             android:id="@+id/updateText"
             android:layout_width="wrap_content"
@@ -511,6 +511,7 @@
             android:background="@drawable/selector_item"
             android:textSize="18sp"
             android:text="检测版本升级" />
+	<!-- end edit -->
 
     </LinearLayout>
 </LinearLayout>

@@ -36,6 +36,7 @@
     <string name="play_next">Next</string>
     <string name="play_prev">Prev</string>
     <string name="play_loop">Loop</string>
+    <string name="play_change">Change</string>
     <string name="play_forward">→</string>
     <string name="play_backward">←</string>
     <string name="play_invert">Invert</string>
@@ -56,6 +57,9 @@
     <string name="parse_god">Super</string>
     <string name="parse_from">Parse from: <xliff:g name="name">%s</xliff:g></string>
 
+    <!-- Push -->
+    <string name="push">Push</string>
+
     <!-- Setting -->
     <string name="setting_vod">Vod</string>
     <string name="setting_live">Live</string>
@@ -64,6 +68,8 @@
     <string name="setting_player_ua">User-Agent</string>
     <string name="setting_player_http">HTTP method</string>
     <string name="setting_player_tunnel">Tunnel mode</string>
+    <string name="setting_player_subtitle">Subtitle size</string>
+    <string name="setting_player_flag">Flag play</string>
     <string name="setting_decode">Decode</string>
     <string name="setting_render">Render</string>
     <string name="setting_scale">Scale</string>
@@ -87,7 +93,6 @@
     <string name="dialog_negative">Cancel</string>
     <string name="dialog_config_hint">Please enter the config…</string>
     <string name="dialog_config_url">Please enter the url…</string>
-    <string name="dialog_history">History</string>  //jim add
 
     <!-- Error -->
     <string name="error_config_get">Configuration get failed</string>
@@ -127,9 +132,14 @@
         <item>EXO</item>
     </string-array>
 
-    <string-array name="select_player_http">
+    <string-array name="select_exo_http">
         <item>Default</item>
         <item>OkHttp</item>
+    </string-array>
+
+    <string-array name="select_flag">
+        <item>Auto</item>
+        <item>Manual</item>
     </string-array>
 
     <string-array name="select_render">
@@ -164,6 +174,7 @@
     </string-array>
 
     //jim add
+    <string name="dialog_history">History</string>
     <string-array name="select_speed">
         <item>0.5</item>
         <item>1.0</item>
@@ -174,20 +185,25 @@
 
     //bellow add by jim
     <string-array name="url_text">
-        <item>自用精选网址-1(推荐)</item>
-        <item>自用备选网址-2</item>
-        <item>本地配置网址-3(载入快)</item>
+        <item>1-猪猪影窝在线配置</item>
+        <item>2-备用配置有离线视频播放</item>
+        <item>3-猪猪本地配置网址</item>
     </string-array>
 
     <string-array name="default_url">
+        <item>https://od.lk/d/MzRfMjMyNjE5NDVf/zhuzhu.txt</item>
         <item>https://ghproxy.com/https://raw.githubusercontent.com/rubidzhu/boxxx/dev/sim.json</item>
-        <item>https://ghproxy.com/https://raw.githubusercontent.com/zzjyy/gaozz/dev/zhuzhu222.json</item>
         <item>clan://localhost/zhuzhuyingwo/localApi/api.json</item>
     </string-array>
 
     <string-array name="select_download">
-        <item>内置下载</item>
+        <item>内置下载,暂不支持</item>
         <item>IDM+下载</item>
+    </string-array>
+
+    <string-array name="switch_array">
+        <item>On</item>
+        <item>Off</item>
     </string-array>
     //end if
 </resources>

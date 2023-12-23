@@ -7,15 +7,15 @@
         android:required="false" />
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
-    //below add by jim
+    <!-- below add by jim -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
     <uses-permission android:name="android.permission.CALL_PHONE" />
-    //end if
+    <!-- end if -->
 
     <application>
 
@@ -23,9 +23,10 @@
             android:name=".ui.activity.MainActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="true"
+            android:launchMode="singleTask"
             android:screenOrientation="fullUser"
             android:windowSoftInputMode="adjustPan"
-            android:theme="@style/AppThemeBot">
+            android:theme="@style/AppThemeBot">	<!-- edit add by jim -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -37,17 +38,55 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data android:mimeType="video/*" />
-                <data android:mimeType="audio/*" />
                 <data android:scheme="content" />
                 <data android:scheme="file" />
-                <data android:scheme="http" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="application/x-bittorrent" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
                 <data android:scheme="smb" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="audio/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="ftp" />
+                <data android:scheme="ed2k" />
+                <data android:scheme="magnet" />
+                <data android:scheme="thunder" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="mitv" />
+                <data android:scheme="jianpian" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.activity.CollectActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout"
+            android:screenOrientation="fullUser" />
 
         <activity
             android:name=".ui.activity.DetailActivity"
@@ -58,11 +97,6 @@
             android:screenOrientation="fullUser"
             android:supportsPictureInPicture="true"
             android:theme="@style/AppTheme.Detail" />
-
-        <activity
-            android:name=".ui.activity.CollectActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout"
-            android:screenOrientation="fullUser" />
 
         <activity
             android:name=".ui.activity.HistoryActivity"
@@ -96,12 +130,22 @@
         <service
             android:name="com.android.cast.dlna.dmc.DLNACastService"
             android:exported="false" />
+	    
+	<service
+            android:name=".service.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
 
-        //bellow add by jim
+        <!-- below add by jim -->
         <activity
             android:name=".ui.activity.DownloadActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout"
             android:screenOrientation="fullUser" />
+        <!-- end if -->
 
     </application>
 </manifest>
