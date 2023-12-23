@@ -1,11 +1,14 @@
 package com.github.catvod.net;
 
-import android.content.Context;
-import android.util.ArrayMap;
+import android.net.Uri;
+
+import androidx.collection.ArrayMap;
 
 import com.github.catvod.bean.Doh;
+import com.github.catvod.utils.Path;
+import com.github.catvod.utils.Util;
+import com.google.common.net.HttpHeaders;
 
-import java.io.File;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -13,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.Cache;
 import okhttp3.Call;
 import okhttp3.Dns;
+import okhttp3.FormBody;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -23,7 +27,7 @@ import okhttp3.dnsoverhttps.DnsOverHttps;
 public class OkHttp {
 
     private static final int TIMEOUT = 30 * 1000;
-    private static final int CACHE = 50 * 1024 * 1024;
+    private static final int CACHE = 100 * 1024 * 1024;
 
     private DnsOverHttps dns;
     private OkHttpClient client;
@@ -37,8 +41,8 @@ public class OkHttp {
         return Loader.INSTANCE;
     }
 
-    public void setDoh(Context context, Doh doh) {
-        OkHttpClient dohClient = new OkHttpClient.Builder().cache(new Cache(new File(context.getCacheDir(), "http_cache"), CACHE)).hostnameVerifier(SSLSocketFactoryCompat.hostnameVerifier).sslSocketFactory(new SSLSocketFactoryCompat(), SSLSocketFactoryCompat.trustAllCert).build();
+    public void setDoh(Doh doh) {
+        OkHttpClient dohClient = new OkHttpClient.Builder().cache(new Cache(Path.doh(), CACHE)).hostnameVerifier(SSLCompat.VERIFIER).sslSocketFactory(new SSLCompat(), SSLCompat.TM).build();
         dns = doh.getUrl().isEmpty() ? null : new DnsOverHttps.Builder().client(dohClient).url(HttpUrl.get(doh.getUrl())).bootstrapDnsHosts(doh.getHosts()).build();
         client = null;
         noRedirect = null;
@@ -59,10 +63,12 @@ public class OkHttp {
     }
 
     public static OkHttpClient client(int timeout) {
-        return new OkHttpClient.Builder().connectTimeout(timeout, TimeUnit.MILLISECONDS).readTimeout(timeout, TimeUnit.MILLISECONDS).writeTimeout(timeout, TimeUnit.MILLISECONDS).dns(dns()).hostnameVerifier(SSLSocketFactoryCompat.hostnameVerifier).sslSocketFactory(new SSLSocketFactoryCompat(), SSLSocketFactoryCompat.trustAllCert).build();
+        return new OkHttpClient.Builder().connectTimeout(timeout, TimeUnit.MILLISECONDS).readTimeout(timeout, TimeUnit.MILLISECONDS).writeTimeout(timeout, TimeUnit.MILLISECONDS).dns(dns()).hostnameVerifier(SSLCompat.VERIFIER).sslSocketFactory(new SSLCompat(), SSLCompat.TM).build();
     }
 
     public static Call newCall(String url) {
+        Uri uri = Uri.parse(url);
+        if (uri.getUserInfo() != null) return newCall(url, Headers.of(HttpHeaders.AUTHORIZATION, Util.basic(uri)));
         return client().newCall(new Request.Builder().url(url).build());
     }
 
@@ -78,6 +84,14 @@ public class OkHttp {
         return client().newCall(new Request.Builder().url(buildUrl(url, params)).build());
     }
 
+    public static Call newCall(String url, ArrayMap<String, String> params, Headers headers) {
+        return client().newCall(new Request.Builder().url(buildUrl(url, params)).headers(headers).build());
+    }
+
+    public static Call newCall(String url, RequestBody body, Headers headers) {
+        return client().newCall(new Request.Builder().url(url).post(body).headers(headers).build());
+    }
+
     public static Call newCall(OkHttpClient client, String url, RequestBody body) {
         return client.newCall(new Request.Builder().url(url).post(body).build());
     }
@@ -86,5 +100,11 @@ public class OkHttp {
         HttpUrl.Builder builder = Objects.requireNonNull(HttpUrl.parse(url)).newBuilder();
         for (Map.Entry<String, String> entry : params.entrySet()) builder.addQueryParameter(entry.getKey(), entry.getValue());
         return builder.build();
+    }
+
+    public static FormBody toBody(ArrayMap<String, String> params) {
+        FormBody.Builder body = new FormBody.Builder();
+        for (Map.Entry<String, String> entry : params.entrySet()) body.add(entry.getKey(), entry.getValue());
+        return body.build();
     }
 }
